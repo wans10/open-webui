@@ -1,0 +1,5495 @@
+---
+sidebar_position: 4
+title: "环境变量配置"
+---
+
+## 概览
+
+Open WebUI 提供了广泛的环境变量，允许您自定义和配置应用程序的各个方面。本页面作为所有可用环境变量的全面参考，提供了它们的类型、默认值和描述。
+随着新变量的引入，本页面将不断更新以反映日益增长的配置选项。
+
+:::info
+
+本页面内容与 Open WebUI 版本 [v0.6.42](https://github.com/open-webui/open-webui/releases/tag/v0.6.42) 同步，但仍在完善中，后续将包含更准确的描述、环境变量的可用选项列表、默认值以及改进的描述。
+
+:::
+
+### 关于 `PersistentConfig` 环境变量的重要说明
+
+:::note
+
+首次启动 Open WebUI 时，所有环境变量都被平等对待并用于配置应用程序。但是，对于标记为 `PersistentConfig` 的环境变量，它们的值会被持久化并存储在内部数据库中。
+
+初始启动后，如果您重新启动容器，`PersistentConfig` 环境变量将不再使用外部环境变量的值，而是使用内部存储的值。
+
+相比之下，普通环境变量在每次后续重启时都会继续更新和应用。
+
+您可以直接在 Open WebUI 内部更新 `PersistentConfig` 环境变量的值，这些更改将存储在内部。这允许您独立于外部环境变量来管理这些配置设置。
+
+请注意，下文文档中明确标记了 `PersistentConfig` 环境变量，以便您了解其行为。
+
+要禁用此行为并强制 Open WebUI 始终使用您的环境变量（忽略数据库），请将 `ENABLE_PERSISTENT_CONFIG` 设置为 `False`。
+
+**关键警告：** 当 `ENABLE_PERSISTENT_CONFIG` 为 `False` 时，您可能仍能在管理员界面中编辑设置。但是，这些更改**不会永久保存**。它们仅对当前会话有效，并在您重启容器时**丢失**，因为系统将恢复为环境变量中定义的值。
+
+:::
+
+## 应用程序/后端 (App/Backend)
+
+以下环境变量由 `backend/open_webui/config.py` 使用，提供 Open WebUI 的启动配置。请注意，根据您是直接运行 Open WebUI 还是通过 Docker 运行，某些变量可能有不同的默认值。有关日志环境变量的更多信息，请参阅我们的 [日志文档](https://docs.openwebui.com/getting-started/advanced-topics/logging)。
+
+### 常规 (General)
+
+#### `WEBUI_URL`
+
+- 类型: `str`
+- 默认值: `http://localhost:3000`
+- 描述: 指定访问您的 Open WebUI 安装实例的 URL。搜索引擎支持和 OAuth/SSO 需要此项。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::warning
+
+在开始使用 OAuth/SSO 进行身份验证之前，必须设置此变量。
+由于这是一个持久配置环境变量，您只能通过以下选项之一更改它：
+
+ - 通过 `ENABLE_PERSISTENT_CONFIG` 暂时禁用持久配置
+ - 在管理员面板 > 设置中更改 "WebUI URL"。
+
+在使用 OAuth/SSO 之前未能设置 `WEBUI_URL` 将导致登录失败。
+
+:::
+
+#### `ENABLE_SIGNUP`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 切换用户帐户创建功能。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_SIGNUP_PASSWORD_CONFIRMATION`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 如果设置为 True，注册页面将添加“确认密码”字段，以帮助用户在创建密码时避免输入错误。
+
+#### `ENABLE_LOGIN_FORM`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 切换电子邮件、密码、登录以及“或”（仅当 `ENABLE_OAUTH_SIGNUP` 设置为 True 时）等元素。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_PASSWORD_AUTH`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 当设置为 True 时，允许密码和 SSO 身份验证方法共存。当设置为 False 时，它将禁用 `/signin` 和 `/ldap` 端点上所有基于密码的登录尝试，强制执行严格的仅限 SSO 的身份验证。在已完全配置 SSO 的生产环境中禁用此设置，以防止基于凭据的帐户接管攻击；如果您需要密码身份验证作为备份或尚未完成 SSO 配置，请保持启用。如果未使用 OAUTH/SSO，则不应禁用此项。
+
+:::danger
+
+**仅**当 [ENABLE_OAUTH_SIGNUP](https://docs.openwebui.com/getting-started/env-configuration/#enable_oauth_signup) 也被使用并设置为 `True` 时，才应将此项设置为 `False`。**如果未使用 OAUTH/SSO，切勿禁用此项。** 否则将导致无法登录。
+
+:::
+
+#### `DEFAULT_LOCALE`
+
+- 类型: `str`
+- 默认值: `en`
+- 描述: 设置应用程序的默认语言区域。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `DEFAULT_MODELS`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 设置默认语言模型。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `DEFAULT_PINNED_MODELS`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 默认情况下为未自定义固定模型的新用户固定的模型 ID 列表（以逗号分隔）。这为新帐户在模型选择器中提供了一组预选的常用模型。
+- 示例: `gpt-4,claude-3-opus,llama-3-70b`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `DEFAULT_USER_ROLE`
+
+- 类型: `str`
+- 可选值:
+- `pending` - 新用户处于待定状态，直到其帐户由管理员手动激活。
+- `user` - 新用户自动激活并拥有普通用户权限。
+- `admin` - 新用户自动激活并拥有管理员权限。
+- 默认值: `pending`
+- 描述: 设置分配给新用户的默认角色。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `DEFAULT_GROUP_ID`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 设置用户注册后默认分配的组 ID。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `PENDING_USER_OVERLAY_TITLE`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 设置待定用户覆盖层（overlay）的自定义标题。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `PENDING_USER_OVERLAY_CONTENT`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 设置待定用户覆盖层（overlay）的自定义文本内容。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_CHANNELS`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用频道支持。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `WEBHOOK_URL`
+
+- 类型: `str`
+- 描述: 设置用于与 Discord/Slack/Microsoft Teams 集成的 Webhook。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_ADMIN_EXPORT`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 控制管理员是否可以在管理员面板中导出数据、聊天记录和数据库。数据库导出目前仅适用于 SQLite 数据库。
+
+#### `ENABLE_ADMIN_CHAT_ACCESS`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 允许管理员用户直接访问其他用户的聊天记录。禁用后，管理员无法再在管理员面板中访问用户的聊天记录。如果您禁用此项，请考虑同时禁用 `ENABLE_ADMIN_EXPORT`（如果您使用的是 SQLite），因为导出文件也包含用户聊天记录。
+
+#### `BYPASS_ADMIN_ACCESS_CONTROL`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 禁用后，管理员用户在工作区访问（模型、知识、提示词和工具）方面被视为普通用户，只能看到他们通过现有访问控制系统**明确拥有访问权限**的项目。这也适用于模型选择器中的模型可见性——管理员将被视为普通用户：他们没有**明确访问权限**的基础模型和自定义模型将被隐藏。如果设置为 `True`（默认值），管理员可以访问工作区区域中**所有创建的项目**以及模型选择器中的所有模型，**无论其访问权限如何**。
+
+#### `ENABLE_USER_WEBHOOKS`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用用户 Webhook。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RESPONSE_WATERMARK`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 设置在聊天中复制消息时包含的自定义文本。例如，`"此文本由 AI 生成"` -> 将在复制每条消息时添加“此文本由 AI 生成”。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `THREAD_POOL_SIZE`
+
+- 类型: `int`
+- 默认值: `0`
+- 描述: 设置 FastAPI/AnyIO 阻塞调用的线程池大小。默认情况下（设置为 `0` 时），FastAPI/AnyIO 使用 `40` 个线程。对于大型实例和许多并发用户，可能需要增加 `THREAD_POOL_SIZE` 以防止阻塞。
+
+:::info
+
+如果您运行的是较大的实例，您**将需要**将此值设置为更高的数值，如数百甚至上千（例如 `1000`），否则如果默认池大小（40个线程）已满，您的应用程序可能会卡住且不再有反应。
+
+:::
+
+#### `ENABLE_CUSTOM_MODEL_FALLBACK`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 控制当自定义模型分配的基础模型缺失时，是否应回退到默认模型。设置为 `True` 时，如果找不到自定义模型的基础模型，系统将使用配置的 `DEFAULT_MODELS` 列表中的第一个模型，而不是返回错误。
+
+#### `MODELS_CACHE_TTL`
+
+- 类型: `int`
+- 默认值: `1`
+- 描述: 设置来自 OpenAI 和 Ollama 端点的模型列表响应的缓存生存时间（以秒为单位）。这通过在指定时间内缓存可用模型列表来减少 API 调用。设置为空字符串可完全禁用缓存。
+
+:::info
+
+这将缓存从配置的 OpenAI 兼容和 Ollama API 端点检索到的外部模型列表（而非 Open WebUI 的内部模型配置）。较高的值通过减少对外部提供商的冗余 API 请求来提高性能，但可能会延迟这些端点上新添加或移除模型的可见性。值为 0 会禁用缓存并强制每次都进行全新的 API 调用。在高流量场景中，增加此值（例如增加到 300 秒）可以在减少外部 API 端点负载的同时，仍提供相当新鲜的模型数据。
+
+:::
+
+#### `SHOW_ADMIN_DETAILS`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 切换是否在界面中显示管理员用户详细信息。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_PUBLIC_ACTIVE_USERS_COUNT`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 控制活跃用户计数是所有人可见还是仅限管理员可见。设置为 `False` 时，只有管理员用户可以看到当前活跃的用户数量，从而减轻后端负载并解决大型部署中的隐私问题。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ADMIN_EMAIL`
+
+- 类型: `str`
+- 描述: 设置由 `SHOW_ADMIN_DETAILS` 显示的管理员电子邮件。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENV`
+
+- 类型: `str`
+- 可选值:
+- `dev` - 在 `/docs` 上启用 FastAPI API 文档
+- `prod` - 自动配置多个环境变量
+- 默认值:
+- **后端默认**: `dev`
+- **Docker 默认**: `prod`
+- 描述: 环境设置。
+
+#### `ENABLE_PERSISTENT_CONFIG`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 控制系统是否优先使用保存在数据库中的配置而非环境变量。
+- **`True` (默认值):** 保存于**数据库**（通过管理员界面）的值优先。如果在界面中设置了某个值，则该设置将忽略环境变量。
+- **`False`:** **环境变量**优先。如果存在环境变量（或使用默认值），系统在启动时将*不会*从数据库加载配置。
+- **关键警告：** 设置为 `False` 时，您仍可以在管理员界面中看似“更改”了设置。这些更改将应用于**当前运行的会话**，但在**重启时会丢失**。每次启动时，系统都会恢复为环境变量中定义的值（或默认值）。
+- **用例：** 如果您希望严格通过 `docker-compose.yaml` 或 `.env` 文件管理配置，并防止界面更改在重启后持久存在，请将此项设置为 `False`。
+
+#### `CUSTOM_NAME`
+
+- 类型: `str`
+- 描述: 设置 `WEBUI_NAME` 但会轮询 **api.openwebui.com** 以获取元数据。
+
+#### `WEBUI_NAME`
+
+- 类型: `str`
+- 默认值: `Open WebUI`
+- 描述: 设置主 WebUI 名称。如果被覆盖，将追加 `(Open WebUI)`。
+
+
+#### `PORT`
+
+- 类型: `int`
+- 默认值: `8080`
+- 描述: 设置运行 Open WebUI 的端口。
+
+:::info
+
+如果您通过 Python 运行应用程序并使用 `open-webui serve` 命令，则无法使用 `PORT` 配置来设置端口。相反，您必须使用 `--port` 标志直接将其指定为命令行参数。例如：
+
+```bash
+open-webui serve --port 9999
+```
+
+这将在端口 `9999` 上运行 Open WebUI。在此模式下，`PORT` 环境变量将被忽略。
+
+:::
+
+#### `ENABLE_REALTIME_CHAT_SAVE`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用后，系统会实时将流式聊天数据的每个分块（chunk）保存到数据库，以确保最大的数据持久性。此功能提供了强大的数据恢复能力，并允许准确的会话跟踪。然而，权衡之处在于增加了延迟，因为保存到数据库会产生延迟。禁用此功能可以提高性能并减少延迟，但在系统故障或崩溃时存在潜在的数据丢失风险。根据您的应用需求和可接受的权衡进行选择。
+
+#### `ENABLE_CHAT_RESPONSE_BASE64_IMAGE_URL_CONVERSION`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 设置为 true 时，它会自动上传 Markdown 中超过 1KB 的 Base64 编码图像，并将其转换为图像文件 URL，以减小响应文本的大小。某些多模态模型直接在 Markdown 内容中输出 Base64 字符串形式的图像。这会导致响应体过大，给 CPU、网络、Redis 和数据库资源带来压力。
+
+#### `CHAT_RESPONSE_STREAM_DELTA_CHUNK_SIZE`
+
+- 类型: `int`
+- 默认值: `1`
+- 描述: 设置系统范围内发送到客户端的流式响应中，批量处理的最小 Token 数量。这允许管理员通过防止可能导致高 CPU 负载的极小分块大小，来强制执行整个系统的性能和稳定性基准。响应所使用的最终分块大小将是此全局变量、模型高级参数或每次聊天设置中设置的最高值。默认值为 1，表示在全局级别不应用最小批处理。
+
+#### `CHAT_STREAM_RESPONSE_CHUNK_MAX_BUFFER_SIZE`
+
+- 类型: `int`
+- 默认值: 空字符串 (' ')，即禁用限制（相当于 None）
+- 描述: 设置处理流式响应分块的最大缓冲区大小（以字节为单位）。当单个分块超过此限制时，系统会返回一个空 JSON 对象并跳过后续超大数据，直到遇到大小正常的分块。这可以防止在处理来自某些提供商的超大响应时（例如 gemini-2.5-flash-image 等模型或返回大量网页搜索数据的服务）出现内存问题。设置为空字符串或负值可完全禁用分块大小限制。推荐值为 16-20 MB (`16777216`) 或更大，具体取决于图像生成模型的图像大小（4K 图像可能需要更大）。
+
+:::info
+
+如果您在高并发、多用户且使用极快流式模型的环境下运行 Open WebUI，建议将此值设置为较大的个位数或较小的两位数（MB）。
+
+:::
+
+#### `BYPASS_MODEL_ACCESS_CONTROL`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 绕过模型访问控制。设置为 `true` 时，所有用户（包括管理员）将能够访问所有模型，无论模型的隐私设置如何（私有、公开、与特定组共享）。这对于可能不需要模型访问限制的小型或个人 Open WebUI 安装非常有用。
+
+#### `WEBUI_BUILD_HASH`
+
+- 类型: `str`
+- 默认值: `dev-build`
+- 描述: 用于识别构建版本的 Git SHA 标识。
+
+#### `WEBUI_BANNERS`
+
+- 类型: `list` (包含 `dict`)
+- 默认值: `[]`
+- 描述: 向用户显示的横幅列表。横幅格式为：
+
+```json
+[{"id": "string", "type": "string [info, success, warning, error]", "title": "string", "content": "string", "dismissible": false, "timestamp": 1000}]
+```
+
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+在 `.env` 文件中设置此环境变量时，请确保通过将整个值包裹在双引号中并对内层引号使用转义字符 (`\"`) 来对引号进行转义。示例：
+
+```
+WEBUI_BANNERS="[{\"id\": \"1\", \"type\": \"warning\", \"title\": \"您的消息已被存储。\", \"content\": \"您的消息已被存储，并可能由人工审核。LLM 容易产生幻觉，请核实来源。\", \"dismissible\": true, \"timestamp\": 1000}]"
+```
+
+:::
+
+#### `USE_CUDA_DOCKER`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 构建具有 NVIDIA CUDA 支持的 Docker 镜像。为本地 Whisper 和嵌入（embeddings）启用 GPU 加速。
+
+#### `DOCKER`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 指示 Open WebUI 是否在 Docker 容器内运行。用于内部环境检测。
+
+#### `USE_CUDA`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 控制是否为本地模型使用 CUDA 加速。设置为 `true` 时，尝试检测并使用可用的 NVIDIA GPU。代码读取环境变量 `USE_CUDA_DOCKER` 来设置此内部布尔变量。
+
+#### `DEVICE_TYPE`
+
+- 类型: `str`
+- 默认值: `cpu`
+- 描述: 指定模型执行的设备类型。如果 CUDA 可用并已启用，则自动设置为 `cuda`；对于 Apple Silicon，则设置为 `mps`。
+
+#### `EXTERNAL_PWA_MANIFEST_URL`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 当定义为完整的 URL（如 https://path/to/manifest.webmanifest）时，发送到 `/manifest.json` 的请求将使用此外部清单文件。未定义时，将使用默认的 `manifest.json` 文件。
+
+#### `ENABLE_TITLE_GENERATION`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用聊天标题生成。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LICENSE_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定要使用的许可证密钥（仅限企业版用户）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SSL_ASSERT_FINGERPRINT`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 指定要使用的 SSL 断言指纹。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_COMPRESSION_MIDDLEWARE`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 为 HTTP 响应启用 gzip 压缩中间件，从而减少带宽使用并缩短加载时间。
+
+#### `DEFAULT_PROMPT_SUGGESTIONS`
+
+- 类型: `list` (包含 `dict`)
+- 默认值: `[]`（表示使用内置的默认提示词建议）
+- 描述: 提示词建议列表。提示词建议格式为：
+
+```json
+[{"title": ["标题第1部分", "标题第2部分"], "content": "提示词内容"}]
+```
+
+:::warning
+
+切勿在生产环境中将此环境变量设置为 `debug`。
+
+:::
+
+### AIOHTTP 客户端 (AIOHTTP Client)
+
+#### `AIOHTTP_CLIENT_TIMEOUT`
+
+- 类型: `int`
+- 默认值: `300`
+- 描述: 指定 AIOHTTP 客户端的超时时长（以秒为单位）。这会影响与 Ollama 和 OpenAI 端点的连接等。
+
+:::info
+
+这是客户端在超时之前等待响应的最大时间。
+如果设置为空字符串 (' ')，超时将被设置为 `None`，这会有效地禁用超时并允许客户端无限期地等待。
+
+:::
+
+#### `AIOHTTP_CLIENT_TIMEOUT_MODEL_LIST`
+
+- 类型: `int`
+- 默认值: `10`
+- 描述: 设置获取模型列表的超时时间（以秒为单位）。在网络延迟需要更长超时时长才能成功检索模型列表的情况下，这会很有用。
+
+:::note
+
+`AIOHTTP_CLIENT_TIMEOUT_MODEL_LIST` 默认设置为 10 秒，以帮助确保在打开 Web UI 时所有必要的连接都可用。此时长允许在网络延迟较高的情况下有足够的时间检索模型列表。如果您更喜欢更快的超时，可以调低此值，但请记住，这样做可能会导致某些连接断开，具体取决于您的网络状况。
+
+:::
+
+#### `AIOHTTP_CLIENT_TIMEOUT_OPENAI_MODEL_LIST`
+
+- 类型: `int`
+- 描述: 设置获取（OpenAI）模型列表的超时时间（以秒为单位）。在网络延迟需要更长超时时长才能成功检索模型列表的情况下，这会很有用。
+
+#### `AIOHTTP_CLIENT_SESSION_SSL`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 在连接到外部 API 时，控制 AIOHTTP 客户端会话的 SSL/TLS 验证。
+
+#### `AIOHTTP_CLIENT_TIMEOUT_TOOL_SERVER_DATA`
+
+- 类型: `int`
+- 默认值: `10`
+- 描述: 设置通过 AIOHTTP 客户端从工具服务器（tool servers）检索数据的超时时间（以秒为单位）。
+
+#### `AIOHTTP_CLIENT_SESSION_TOOL_SERVER_SSL`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 专门控制通过 AIOHTTP 客户端连接工具服务器时的 SSL/TLS 验证。
+
+### 目录 (Directories)
+
+#### `DATA_DIR`
+
+- 类型: `str`
+- 默认值: `./data`
+- 描述: 指定数据存储的基础目录，包括上传、缓存、向量数据库等。
+
+#### `FONTS_DIR`
+
+- 类型: `str`
+- 描述: 指定字体目录。
+
+#### `FRONTEND_BUILD_DIR`
+
+- 类型: `str`
+- 默认值: `../build`
+- 描述: 指定已构建的前端文件所在位置。
+
+#### `STATIC_DIR`
+
+- 类型: `str`
+- 默认值: `./static`
+- 描述: 指定静态文件存放目录，例如 favicon。
+
+### 日志 (Logging)
+
+#### `GLOBAL_LOG_LEVEL`
+
+- 类型: `str`
+- 默认值: `INFO`
+- 描述: 设置所有 Open WebUI 组件的全局日志级别。有效值：`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`。
+
+#### `AUDIT_LOGS_FILE_PATH`
+
+- 类型: `str`
+- 默认值: `${DATA_DIR}/audit.log`
+- 描述: 配置审计日志文件的存储位置。允许将日志存储在独立的卷或自定义位置中，以便更好地进行组织和持久化。
+- 示例: `/var/log/openwebui/audit.log`, `/mnt/logs/audit.log`
+
+#### `AUDIT_LOG_FILE_ROTATION_SIZE`
+
+- 类型: `str`
+- 默认值: `10MB`
+- 描述: 指定审计日志文件回滚（rotation）前的最大大小（例如 `10MB`, `100MB`, `1GB`）。
+
+#### `AUDIT_UVICORN_LOGGER_NAMES`
+
+- 类型: `str`
+- 默认值: `uvicorn.access`
+- 描述: 要捕获以进行审计日志记录的记录器（logger）名称，以逗号分隔。默认为 Uvicorn 的访问记录器。
+
+#### `AUDIT_LOG_LEVEL`
+
+- 类型: `str`
+- 默认值: `NONE`
+- 可选值: `NONE`, `METADATA`, `REQUEST`, `REQUEST_RESPONSE`
+- 描述: 控制审计日志的详尽程度。`METADATA` 记录基础请求信息，`REQUEST` 包含请求体，`REQUEST_RESPONSE` 包含请求和响应体。
+
+#### `MAX_BODY_LOG_SIZE`
+
+- 类型: `int`
+- 默认值: `2048`
+- 描述: 设置审计日志中请求/响应体的最大字节数。超过此大小的正文将被截断。
+
+#### `AUDIT_EXCLUDED_PATHS`
+
+- 类型: `str`
+- 默认值: `/chats,/chat,/folders`
+- 描述: 要从审计日志中排除的 URL 路径列表，以逗号分隔。匹配时不包含前导斜杠。
+
+### Ollama (Ollama)
+
+#### `ENABLE_OLLAMA_API`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 开启或关闭对 Ollama API 的支持。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OLLAMA_BASE_URL` (`OLLAMA_API_BASE_URL` 已弃用) {#ollama_base_url}
+
+- 类型: `str`
+- 默认值: `http://localhost:11434`
+- Docker 默认值:
+  - 如果设置了 `K8S_FLAG`: `http://ollama-service.open-webui.svc.cluster.local:11434`
+  - 如果 `USE_OLLAMA_DOCKER=True`: `http://localhost:11434`
+  - 否则: `http://host.docker.internal:11434`
+- 描述: 配置 Ollama 后端 URL。
+
+#### `OLLAMA_BASE_URLS`
+
+- 类型: `str`
+- 描述: 配置负载均衡的 Ollama 后端主机，以 `;` 分隔。参见 [`OLLAMA_BASE_URL`](#ollama_base_url)。其优先级高于 [`OLLAMA_BASE_URL`](#ollama_base_url)。
+- 示例: `http://host-one:11434;http://host-two:11434`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USE_OLLAMA_DOCKER`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 构建带有内置 Ollama 实例的 Docker 镜像。
+
+#### `K8S_FLAG`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 如果设置，系统会假定为 Helm chart 部署，并将 [`OLLAMA_BASE_URL`](#ollama_base_url) 设置为 `http://ollama-service.open-webui.svc.cluster.local:11434`
+
+### OpenAI (OpenAI)
+
+#### `ENABLE_OPENAI_API`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 开启或关闭对 OpenAI API 的支持。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OPENAI_API_BASE_URL`
+
+- 类型: `str`
+- 默认值: `https://api.openai.com/v1`
+- 描述: 配置 OpenAI 基础 API URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OPENAI_API_BASE_URLS`
+
+- 类型: `str`
+- 描述: 支持均衡的 OpenAI 基础 API URL，以分号分隔。
+- 示例: `http://host-one:11434;http://host-two:11434`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OPENAI_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 OpenAI API 密钥。
+- 示例: `sk-124781258123`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OPENAI_API_KEYS`
+
+- 类型: `str`
+- 描述: 支持多个 OpenAI API 密钥，以分号分隔。
+- 示例: `sk-124781258123;sk-4389759834759834`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 任务 (Tasks)
+
+#### `TASK_MODEL`
+
+- 类型: `str`
+- 描述: 使用 Ollama 模型时，用于生成标题、网页搜索查询等任务的默认模型。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `TASK_MODEL_EXTERNAL`
+
+- 类型: `str`
+- 描述: 使用 OpenAI 兼容端点时，用于生成标题、网页搜索查询等任务的默认模型。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `TITLE_GENERATION_PROMPT_TEMPLATE`
+
+- 类型: `str`
+- 描述: 生成聊天标题时使用的提示模板。
+- 默认值: `DEFAULT_TITLE_GENERATION_PROMPT_TEMPLATE` 环境变量的值。
+
+`DEFAULT_TITLE_GENERATION_PROMPT_TEMPLATE`:
+
+```
+
+### Task:
+Generate a concise, 3-5 word title with an emoji summarizing the chat history.
+
+### Guidelines:
+- The title should clearly represent the main theme or subject of the conversation.
+- Use emojis that enhance understanding of the topic, but avoid quotation marks or special formatting.
+- Write the title in the chat's primary language; default to English if multilingual.
+- Prioritize accuracy over excessive creativity; keep it clear and simple.
+
+### Output:
+JSON format: { "title": "your concise title here" }
+
+### Examples:
+- { "title": "📉 Stock Market Trends" },
+- { "title": "🍪 Perfect Chocolate Chip Recipe" },
+- { "title": "Evolution of Music Streaming" },
+- { "title": "Remote Work Productivity Tips" },
+- { "title": "Artificial Intelligence in Healthcare" },
+- { "title": "🎮 Video Game Development Insights" }
+
+### Chat History:
+<chat_history>
+{{MESSAGES:END:2}}
+</chat_history>
+```
+
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_FOLLOW_UP_GENERATION`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 开启或关闭后续提问生成。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `FOLLOW_UP_GENERATION_PROMPT_TEMPLATE`
+
+- 类型: `str`
+- 描述: 用于生成若干相关后续问题的提示模板。
+- 默认值: `DEFAULT_FOLLOW_UP_GENERATION_PROMPT_TEMPLATE` 环境变量的值。
+
+`DEFAULT_FOLLOW_UP_GENERATION_PROMPT_TEMPLATE`:
+
+```
+
+### Task:
+Suggest 3-5 relevant follow-up questions or prompts that the user might naturally ask next in this conversation as a **user**, based on the chat history, to help continue or deepen the discussion.
+
+### Guidelines:
+- Write all follow-up questions from the user’s point of view, directed to the assistant.
+- Make questions concise, clear, and directly related to the discussed topic(s).
+- Only suggest follow-ups that make sense given the chat content and do not repeat what was already covered.
+- If the conversation is very short or not specific, suggest more general (but relevant) follow-ups the user might ask.
+- Use the conversation's primary language; default to English if multilingual.
+- Response must be a JSON array of strings, no extra text or formatting.
+
+### Output:
+JSON format: { "follow_ups": ["Question 1?", "Question 2?", "Question 3?"] }
+
+### Chat History:
+<chat_history>
+{{MESSAGES:END:6}}
+</chat_history>"
+```
+
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE`
+
+- 类型: `str`
+- 描述: 调用工具时使用的提示模板。
+- 默认值: `DEFAULT_TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE` 环境变量的值。
+
+`DEFAULT_TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE`:
+
+```
+Available Tools: {{TOOLS}}
+
+Your task is to choose and return the correct tool(s) from the list of available tools based on the query. Follow these guidelines:
+
+- Return only the JSON object, without any additional text or explanation.
+
+- If no tools match the query, return an empty array:
+   {
+     "tool_calls": []
+   }
+
+- If one or more tools match the query, construct a JSON response containing a "tool_calls" array with objects that include:
+   - "name": The tool's name.
+   - "parameters": A dictionary of required parameters and their corresponding values.
+
+The format for the JSON response is strictly:
+{
+  "tool_calls": [
+    {"name": "toolName1", "parameters": {"key1": "value1"}},
+    {"name": "toolName2", "parameters": {"key2": "value2"}}
+  ]
+}
+```
+
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 代码执行 (Code Execution)
+
+#### `ENABLE_CODE_EXECUTION`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 开启或关闭代码执行。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CODE_EXECUTION_ENGINE`
+
+- 类型: `str`
+- 默认值: `pyodide`
+- 描述: 指定代码执行引擎。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CODE_EXECUTION_JUPYTER_URL`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定用于代码执行的 Jupyter URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CODE_EXECUTION_JUPYTER_AUTH`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定用于代码执行的 Jupyter 身份验证方式。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CODE_EXECUTION_JUPYTER_AUTH_TOKEN`
+
+- 类型: `str`
+- 默认值: `None`
+
+#### `CODE_EXECUTION_JUPYTER_AUTH_PASSWORD`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定用于代码执行的 Jupyter 身份验证密码。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CODE_EXECUTION_JUPYTER_TIMEOUT`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 指定 Jupyter 代码执行的超时时间。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 代码解释器 (Code Interpreter)
+
+#### `ENABLE_CODE_INTERPRETER`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用代码解释器。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CODE_INTERPRETER_ENGINE`
+
+- 类型: `str`
+- 默认值: `pyodide`
+- 描述: 指定要使用的代码解释器引擎。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CODE_INTERPRETER_BLACKLISTED_MODULES`
+
+- 类型: `str`（以逗号分隔的模块名称列表）
+- 默认值: `None`
+- 描述: 指定代码解释器中禁用的 Python 模块列表（以逗号分隔）。这通过防止访问潜在敏感或系统级功能来增强安全性。
+
+#### `CODE_INTERPRETER_PROMPT_TEMPLATE`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定代码解释器使用的提示模板。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CODE_INTERPRETER_JUPYTER_URL`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 指定用于代码解释器的 Jupyter URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CODE_INTERPRETER_JUPYTER_AUTH`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 指定用于代码解释器的 Jupyter 身份验证方式。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CODE_INTERPRETER_JUPYTER_AUTH_TOKEN`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 指定用于代码解释器的 Jupyter 身份验证令牌。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CODE_INTERPRETER_JUPYTER_AUTH_PASSWORD`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 指定用于代码解释器的 Jupyter 身份验证密码。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CODE_INTERPRETER_JUPYTER_TIMEOUT`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 指定 Jupyter 代码解释器的超时时间。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 直接连接 (Direct Connections) (OpenAPI/MCPO 工具服务器)
+
+#### `ENABLE_DIRECT_CONNECTIONS`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用直接连接。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `TOOL_SERVER_CONNECTIONS`
+
+- 类型: `str` (JSON 数组)
+- 默认值: `[]`
+- 描述: 指定工具服务器连接配置的 JSON 数组。每个连接应定义连接到实现 OpenAPI/MCPO 协议的外部工具服务器所需的参数。JSON 必须格式正确，否则将回退为空数组。
+- 示例:
+```json
+[
+  {
+    "type": "openapi",
+    "url": "example-url",
+    "spec_type": "url",
+    "spec": "",
+    "path": "openapi.json",
+    "auth_type": "none",
+    "key": "",
+    "config": { "enable": true },
+    "info": {
+      "id": "",
+      "name": "example-server",
+      "description": "MCP server description."
+    }
+  }
+]
+```
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::warning
+
+随着新功能的添加，`TOOL_SERVER_CONNECTIONS` 的 JSON 数据结构可能会随时间演变。
+
+:::
+
+### 自动补全 (Autocomplete)
+
+#### `ENABLE_AUTOCOMPLETE_GENERATION`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用自动补全生成。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+启用 `ENABLE_AUTOCOMPLETE_GENERATION` 时，请确保相应地配置 `AUTOCOMPLETE_GENERATION_INPUT_MAX_LENGTH` 和 `AUTOCOMPLETE_GENERATION_PROMPT_TEMPLATE`。
+
+:::
+
+#### `AUTOCOMPLETE_GENERATION_INPUT_MAX_LENGTH`
+
+- 类型: `int`
+- 默认值: `-1`
+- 描述: 设置自动补全生成的最大输入长度。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUTOCOMPLETE_GENERATION_PROMPT_TEMPLATE`
+
+- 类型: `str`
+- 默认值: `DEFAULT_AUTOCOMPLETE_GENERATION_PROMPT_TEMPLATE` 环境变量的值。
+
+`DEFAULT_AUTOCOMPLETE_GENERATION_PROMPT_TEMPLATE`:
+
+```
+
+### Task:
+You are an autocompletion system. Continue the text in `<text>` based on the **completion type** in `<type>` and the given language.
+
+### **Instructions**:
+1. Analyze `<text>` for context and meaning.
+2. Use `<type>` to guide your output:
+   - **General**: Provide a natural, concise continuation.
+   - **Search Query**: Complete as if generating a realistic search query.
+3. Start as if you are directly continuing `<text>`. Do **not** repeat, paraphrase, or respond as a model. Simply complete the text.
+4. Ensure the continuation:
+   - Flows naturally from `<text>`.
+   - Avoids repetition, overexplaining, or unrelated ideas.
+5. If unsure, return: `{ "text": "" }`.
+
+### **Output Rules**:
+- Respond only in JSON format: `{ "text": "<your_completion>" }`.
+
+### **Examples**:
+
+#### Example 1:
+Input:
+<type>General</type>
+<text>The sun was setting over the horizon, painting the sky</text>
+Output:
+{ "text": "with vibrant shades of orange and pink." }
+
+#### Example 2:
+Input:
+<type>Search Query</type>
+<text>Top-rated restaurants in</text>
+Output:
+{ "text": "New York City for Italian cuisine." }
+
+---
+
+### Context:
+<chat_history>
+{{MESSAGES:END:6}}
+</chat_history>
+<type>{{TYPE}}</type>
+<text>{{PROMPT}}</text>
+
+#### Output:
+```
+
+- 描述: 设置自动补全生成的提示词模板。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 评估竞技场模型 (Evaluation Arena Model)
+
+#### `ENABLE_EVALUATION_ARENA_MODELS`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用评估竞技场模型。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_MESSAGE_RATING`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用消息评分功能。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_COMMUNITY_SHARING`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 控制是否向用户显示“分享到社区”按钮。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 标签生成 (Tags Generation)
+
+#### `ENABLE_TAGS_GENERATION`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用标签生成。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `TAGS_GENERATION_PROMPT_TEMPLATE`
+
+- 类型: `str`
+- 默认值: `DEFAULT_TAGS_GENERATION_PROMPT_TEMPLATE` 环境变量的值。
+
+`DEFAULT_TAGS_GENERATION_PROMPT_TEMPLATE`:
+
+```
+
+### Task:
+Generate 1-3 broad tags categorizing the main themes of the chat history, along with 1-3 more specific subtopic tags.
+
+### Guidelines:
+- Start with high-level domains (e.g., Science, Technology, Philosophy, Arts, Politics, Business, Health, Sports, Entertainment, Education)
+- Consider including relevant subfields/subdomains if they are strongly represented throughout the conversation
+- If content is too short (less than 3 messages) or too diverse, use only ["General"]
+- Use the chat's primary language; default to English if multilingual
+- Prioritize accuracy over specificity
+
+### Output:
+JSON format: { "tags": ["tag1", "tag2", "tag3"] }
+
+### Chat History:
+<chat_history>
+{{MESSAGES:END:6}}
+</chat_history>
+```
+
+- 描述: 设置标签生成的提示词模板。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### API 密钥端点限制 (API Key Endpoint Restrictions)
+
+#### `ENABLE_API_KEYS`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用 API 密钥创建功能，允许用户生成用于程序化访问 Open WebUI 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+此变量替换了已弃用的 `ENABLE_API_KEY` 环境变量。
+
+:::
+
+:::info
+
+为了使 API 密钥创建（以及 API 密钥本身）生效，您不仅需要全局启用它，还需要为特定用户组授予相应权限。
+
+:::
+
+#### `ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用 API 密钥端点限制以增强安全性和可配置性，允许管理员限制可以使用 API 密钥访问哪些端点。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+此变量替换了已弃用的 `ENABLE_API_KEY_ENDPOINT_RESTRICTIONS` 环境变量。
+
+:::
+
+#### `API_KEYS_ALLOWED_ENDPOINTS`
+
+- 类型: `str`
+- 描述: 指定启用 API 密钥端点限制时允许的 API 端点（以逗号分隔）。
+- 示例: `/api/v1/messages,/api/v1/channels,/api/v1/chat/completions`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::note
+
+`API_KEYS_ALLOWED_ENDPOINTS` 的值应为以逗号分隔的端点 URL 列表，例如 `/api/v1/messages, /api/v1/channels`。
+
+:::
+
+:::info
+
+此变量替换了已弃用的 `API_KEY_ALLOWED_ENDPOINTS` 环境变量。
+
+:::
+
+#### `JWT_EXPIRES_IN`
+
+- 类型: `str`
+- 默认值: `4w`
+- 描述: 设置 JWT 到期时间（以秒为单位）。有效的时间单位：`s`, `m`, `h`, `d`, `w` 或 `-1`（表示永不到期）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::warning
+
+将 `JWT_EXPIRES_IN` 设置为 `-1` 会禁用 JWT 到期，使签发的令牌永远有效。**这在生产环境中极其危险**，如果令牌泄露或被攻破，您的系统将面临严重的安全风险。
+
+**在生产环境中务必设置合理的过期时间（例如 `3600s`, `1h`, `7d` 等），以限制身份验证令牌的生命周期。**
+
+**切勿在生产环境中使用 `-1`。**
+
+如果您已经部署并设置了 `JWT_EXPIRES_IN=-1`，可以旋转（rotate）或更改 `WEBUI_SECRET_KEY` 以立即失效所有现有令牌。
+
+:::
+
+## 安全变量 (Security Variables)
+
+#### `ENABLE_FORWARD_USER_INFO_HEADERS`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 将用户信息（用户名、ID、电子邮件、角色和聊天 ID）作为 X-headers 转发给 OpenAI API 和 Ollama API。
+如果启用，将转发以下标头：
+- `X-OpenWebUI-User-Name`
+- `X-OpenWebUI-User-Id`
+- `X-OpenWebUI-User-Email`
+- `X-OpenWebUI-User-Role`
+- `X-OpenWebUI-Chat-Id`
+
+#### `ENABLE_WEB_LOADER_SSL_VERIFICATION`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 绕过网站 RAG 的 SSL 验证。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `WEBUI_SESSION_COOKIE_SAME_SITE`
+
+- 类型: `str`
+- 可选值:
+  - `lax` - 将 `SameSite` 属性设置为 lax，允许会话 cookie 随第三方网站发起的请求一同发送。
+  - `strict` - 将 `SameSite` 属性设置为 strict，阻止会话 cookie 随第三方网站发起的请求发送。
+  - `none` - 将 `SameSite` 属性设置为 none，允许会话 cookie 随第三方网站发起的请求发送，但仅限通过 HTTPS 发送。
+- 默认值: `lax`
+- 描述: 设置会话 cookie 的 `SameSite` 属性。
+
+:::warning
+
+启用 `ENABLE_OAUTH_SIGNUP` 时，将 `WEBUI_SESSION_COOKIE_SAME_SITE` 设置为 `strict` 可能会导致登录失败。这是因为 Open WebUI 使用会话 cookie 来验证来自 OAuth 提供程序的调，这有助于防止 CSRF 攻击。
+
+但是，`strict` 会话 cookie 不会随回调请求一同发送，从而导致潜在的登录问题。如果您遇到此类问题，请改用默认值 `lax`。
+
+:::
+
+#### `WEBUI_SESSION_COOKIE_SECURE`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 如果设置为 `True`，则为会话 cookie 设置 `Secure` 属性。
+
+#### `WEBUI_AUTH_COOKIE_SAME_SITE`
+
+- 类型: `str`
+- 可选值:
+  - `lax` - 将 `SameSite` 属性设置为 lax，允许身份验证 cookie 随第三方网站发起的请求一同发送。
+  - `strict` - 将 `SameSite` 属性设置为 strict，阻止身份验证 cookie 随第三方网站发起的请求发送。
+  - `none` - 将 `SameSite` 属性设置为 none，允许身份验证 cookie 随第三方网站发起的请求发送，但仅限通过 HTTPS 发送。
+- 默认值: `lax`
+- 描述: 设置身份验证 cookie 的 `SameSite` 属性。
+
+:::info
+
+如果未设置该值，将回退使用 `WEBUI_SESSION_COOKIE_SAME_SITE`。
+
+:::
+
+#### `WEBUI_AUTH_COOKIE_SECURE`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 如果设置为 `True`，则为身份验证 cookie 设置 `Secure` 属性。
+
+:::info
+
+如果未设置该值，将回退使用 `WEBUI_SESSION_COOKIE_SECURE`。
+
+:::
+
+#### `WEBUI_AUTH`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 此设置用于启用或禁用身份验证。
+
+:::danger
+
+如果设置为 `False`，您的 Open WebUI 实例将禁用身份验证。但是请注意，只有在没有任何现有用户的全新安装中才可以关闭身份验证。如果已经有注册用户，则无法直接禁用身份验证。如果您打算关闭 `WEBUI_AUTH`，请确保数据库中没有用户。
+
+:::
+
+#### `ENABLE_PASSWORD_VALIDATION`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用用户帐户的密码复杂度验证。启用后，在注册、更新密码和管理员创建用户操作期间，密码必须符合 `PASSWORD_VALIDATION_REGEX_PATTERN` 定义的复杂度要求。这有助于在整个应用程序中强制执行更强的密码策略。
+
+:::info
+
+密码验证应用于：
+- 新用户注册（注册）
+- 通过用户设置修改密码
+- 管理员发起的创建用户
+- 密码重置
+
+密码不符合新要求的现有用户**不会被强制自动更新密码**，但下次修改密码时需要符合要求。
+
+:::
+
+#### `PASSWORD_VALIDATION_REGEX_PATTERN`
+
+- 类型: `str`
+- 默认值: `^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$`
+- 描述: 启用 `ENABLE_PASSWORD_VALIDATION` 时用于验证密码复杂度的正则表达式模式。默认模式要求密码长度至少为 8 个字符，且包含至少一个大写字母、一个小写字母、一个数字和一个特殊字符。
+
+:::warning
+
+**自定义模式注意事项**
+
+定义自定义正则表达式时，请确保：
+- 它是 Python `re` 模块可以编译的有效正则表达式
+- 在安全要求与用户体验之间取得平衡
+- 在部署前经过彻底测试，以免将用户锁定在系统之外
+
+无效的正则表达式将导致密码验证失败，可能导致无法注册用户或修改密码。
+
+:::
+
+#### `WEBUI_SECRET_KEY`
+
+- 类型: `str`
+- 默认值: `t0p-s3cr3t`
+- Docker 默认值: 首次启动时随机生成
+- 描述: 覆盖用于 JSON Web Token 和**敏感数据加密**（如 MCP 的 OAuth 令牌）的随机生成字符串。
+
+:::danger Docker/生产环境关键说明
+
+您**必须**将 `WEBUI_SECRET_KEY` 设置为一个安全的、持久的值。
+
+如果不设置此项：
+1. 容器每次重启/重新创建时都会随机生成一个密钥。
+2. **所有 OAuth 会话将失效。**
+3. **MCP 工具将失效**（错误：`Error decrypting tokens`），因为它们无法解密使用旧密钥存储的令牌。
+4. 您将被强制退出登录。
+
+**切勿在生产环境中保持未设置状态。**
+
+:::
+
+:::warning
+
+**多 Worker 和多节点部署必须设置，且强烈建议在单 Worker 环境中也设置**
+
+在将 Open WebUI 部署为 `UVICORN_WORKERS > 1` 或在带有负载均衡器的多节点/Worker 集群（如 helm/kubectl/kubernetes/k8s）中时，您**必须**设置此变量。否则会发生以下问题：
+
+- 跨 Worker 的会话管理将失败
+- 实例间的应用程序状态将不一致
+- 在分布式设置中，Websocket 连接将无法正常工作
+- 用户可能会遇到间歇性的身份验证失败
+
+:::
+
+#### `ENABLE_VERSION_UPDATE_CHECK`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用后，应用程序将执行自动更新检查并通知您版本更新。
+
+:::info
+
+如果启用了 `OFFLINE_MODE`，此 `ENABLE_VERSION_UPDATE_CHECK` 标志将始终自动设为 `false`。
+
+:::
+
+#### `OFFLINE_MODE`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 禁用 Open WebUI 用于检查更新和自动下载模型的网络连接。
+
+:::info
+
+**启用后将关闭以下功能：**
+
+- 自动版本更新检查（参见标志 `ENABLE_VERSION_UPDATE_CHECK`）
+- 从 Hugging Face Hub 下载嵌入模型
+- 如果您在激活 `OFFLINE_MODE` 之前未下载嵌入模型，则任何 RAG、网页搜索和文档分析功能可能无法正常工作
+- 界面中的更新通知（参见标志 `ENABLE_VERSION_UPDATE_CHECK`）
+
+**仍可使用的功能：**
+
+- 外部 LLM API 连接（OpenAI 等）
+- OAuth 身份验证提供程序
+- 使用外部 API 的网页搜索和 RAG
+
+在[离线模式指南](/tutorials/offline-mode)中了解更多关于 `离线模式` 的信息。
+
+:::
+
+#### `HF_HUB_OFFLINE`
+
+- 类型: `int`
+- 默认值: `0`
+- 描述: 告知 Hugging Face 是否要在离线模式下启动，从而不连接 Hugging Face 并阻止所有自动模型下载。
+
+:::info
+
+当此项设置为 `1` 时，模型、sentence transformers 以及其他可配置项的下载将**无法工作**。
+如果设置为 `True`，在默认安装下 RAG 也将无法工作。
+
+:::
+
+#### `RESET_CONFIG_ON_START`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启动时重置 `config.json` 文件。
+
+#### `SAFE_MODE`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用安全模式，禁用潜在的不安全功能并停用所有函数。
+
+#### `CORS_ALLOW_ORIGIN`
+
+- 类型: `str`
+- 默认值: `*`
+- 描述: 设置跨源资源共享 (CORS) 的允许来源。以分号 ';' 分隔的允许来源列表。
+
+:::warning
+
+**此变量必须设置**，否则您可能会遇到 Websocket 问题以及奇怪的 "{}" 响应或 "Unexpected token 'd', 'data: {"id"... is not valid JSON" 错误。
+
+:::
+
+:::info
+
+如果您遇到 Websocket 问题，请检查 Open WebUI 的日志。
+如果您看到类似 `engineio.base_server:_log_error_once:354 - https://yourdomain.com is not an accepted origin.` 的行，则需要更广泛地配置您的 `CORS_ALLOW_ORIGIN`。
+
+示例：
+`CORS_ALLOW_ORIGIN: "https://yourdomain.com;http://yourdomain.com;https://yourhostname;http://youripaddress;http://localhost:3000"`
+
+将访问 Open WebUI 可能用到的所有有效 IP、域名和主机名添加到该变量中。
+设置完成后，控制台中不应再出现 Websocket 问题或警告。
+
+:::
+
+#### `CORS_ALLOW_CUSTOM_SCHEME`
+
+- 类型: `str`
+- 默认值: `""` (空字符串)
+- 描述: 设置跨源资源共享 (CORS) 的其他允许方案列表。允许您指定除标准 `http` 和 `https` 之外的其他自定义 URL 方案，作为 CORS 的有效来源。
+
+:::info
+
+这在以下场景中特别有用：
+- 与使用自定义协议（如 `app://`, `custom-app-scheme://`）的桌面应用程序集成。
+- 使用非标准方案（如适用时的 `file://` 或 `electron://`）的本地开发环境 or 测试设置。
+
+提供不带 `://` 的方案名称列表（以分号分隔）。例如：`app;file;electron;my-custom-scheme`。
+
+配置后，系统将对 `CORS_ALLOW_ORIGIN` 中指定的任何来源验证这些自定义方案（连同 `http` 和 `https` 一起）。
+
+:::
+
+#### `RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 决定是否允许 Hub 上定义在其自身建模文件中的自定义模型。
+
+#### `RAG_RERANKING_MODEL_TRUST_REMOTE_CODE`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 决定是否允许在重排序（reranking）时使用 Hub 上定义在其自身建模文件中的自定义模型。
+
+#### `RAG_EMBEDDING_MODEL_AUTO_UPDATE`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 切换 Sentence-Transformer 模型的自动更新。
+
+#### `RAG_RERANKING_MODEL_AUTO_UPDATE`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 切换重排序模型的自动更新。
+
+## 向量数据库 (Vector Database)
+
+#### `VECTOR_DB`
+
+- 类型: `str`
+- 可选项:
+  - `chroma`, `elasticsearch`, `milvus`, `opensearch`, `pgvector`, `qdrant`, `pinecone`, `s3vector`, `oracle23ai`, `weaviate`
+- 默认值: `chroma`
+- 描述: 指定要使用的向量数据库系统。此设置决定了用于管理嵌入向量的向量存储系统。
+
+:::note
+
+PostgreSQL 依赖项
+要使用 `pgvector`，请确保已安装 PostgreSQL 依赖项：
+
+```bash
+pip install open-webui[all]
+```
+
+:::
+
+:::info
+
+只有 PGVector 和 ChromaDB 将由 Open WebUI 团队持续维护。
+其他向量存储是由社区添加的。
+
+:::
+
+### ChromaDB (ChromaDB)
+
+#### `CHROMA_TENANT`
+
+- 类型: `str`
+- 默认值: `chromadb.DEFAULT_TENANT` 的值（`chromadb` 模块中的常量）
+- 描述: 设置 ChromaDB 用于 RAG 嵌入的租户。
+
+#### `CHROMA_DATABASE`
+
+- 类型: `str`
+- 默认值: `chromadb.DEFAULT_DATABASE` 的值（`chromadb` 模块中的常量）
+- 描述: 设置 ChromaDB 租户中用于 RAG 嵌入的数据库。
+
+#### `CHROMA_HTTP_HOST`
+
+- 类型: `str`
+- 描述: 指定远程 ChromaDB 服务器的主机名。如果未设置，则使用本地 ChromaDB 实例。
+
+#### `CHROMA_HTTP_PORT`
+
+- 类型: `int`
+- 默认值: `8000`
+- 描述: 指定远程 ChromaDB 服务器的端口。
+
+#### `CHROMA_HTTP_HEADERS`
+
+- 类型: `str`
+- 描述: 包含在每次 ChromaDB 请求中的 HTTP 标头列表（以逗号分隔）。
+- 示例: `Authorization=Bearer heuhagfuahefj,User-Agent=OpenWebUI`。
+
+#### `CHROMA_HTTP_SSL`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 控制连接 ChromaDB 服务器时是否使用 SSL。
+
+#### `CHROMA_CLIENT_AUTH_PROVIDER`
+
+- 类型: `str`
+- 描述: 指定远程 ChromaDB 服务器的身份验证提供程序。
+- 示例: `chromadb.auth.basic_authn.BasicAuthClientProvider`
+
+#### `CHROMA_CLIENT_AUTH_CREDENTIALS`
+
+- 类型: `str`
+- 描述: 指定远程 ChromaDB 服务器的身份验证凭据。
+- 示例: `username:password`
+
+### Elasticsearch (Elasticsearch)
+
+#### `ELASTICSEARCH_API_KEY`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 指定 Elasticsearch API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ELASTICSEARCH_CA_CERTS`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 指定 Elasticsearch CA 证书的路径。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ELASTICSEARCH_CLOUD_ID`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 指定 Elasticsearch 云 ID。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ELASTICSEARCH_INDEX_PREFIX`
+
+- 类型: `str`
+- 默认值: `open_webui_collections`
+- 描述: 指定 Elasticsearch 索引的前缀。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ELASTICSEARCH_PASSWORD`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 指定 Elasticsearch 的密码。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ELASTICSEARCH_URL`
+
+- 类型: `str`
+- 默认值: `https://localhost:9200`
+- 描述: 指定 Elasticsearch 实例的 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ELASTICSEARCH_USERNAME`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')，因为默认为 `None`。
+- 描述: 指定 Elasticsearch 的用户名。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### Milvus (Milvus)
+
+:::warning
+
+Milvus 并非由 Open WebUI 团队主动维护。它是社区贡献的补充，由社区维护。
+如果您想使用 Milvus，请在升级 Open WebUI 时格外小心（执行备份并创建快照以便回滚），以防 Open WebUI 的内部更改导致其失效。
+
+:::
+
+#### `MILVUS_URI` **(必填)**
+
+- 类型: `str`
+- 默认值: `${DATA_DIR}/vector_db/milvus.db`
+- 示例 (远程): `http://your-server-ip:19530`
+- 描述: 指定连接 Milvus 向量数据库的 URI。根据部署配置，这可以指向本地或远程 Milvus 服务器。
+
+#### `MILVUS_DB`
+
+- 类型: `str`
+- 默认值: `default`
+- 示例: `default`
+- 描述: 指定 Milvus 实例中连接的数据库。
+
+#### `MILVUS_TOKEN` **(带有身份验证的远程连接必填)**
+
+- 类型: `str`
+- 默认值: `None`
+- 示例: `root:password` (格式: `username:password`)
+- 描述: 指定 Milvus 的可选连接令牌。在连接启用身份验证的远程 Milvus 服务器时必填。格式为 `username:password`。
+
+#### `MILVUS_INDEX_TYPE`
+
+- 类型: `str`
+- 默认值: `HNSW`
+- 可选项: `AUTOINDEX`, `FLAT`, `IVF_FLAT`, `HNSW`, `DISKANN`
+- 描述: 指定在 Milvus 中创建新集合时使用的索引类型。对于 Milvus standalone，通常推荐使用 `AUTOINDEX`。`HNSW` 可能提供更好的性能，但需要集群化 Milvus 设置，不适用于 standalone 设置。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MILVUS_METRIC_TYPE`
+
+- 默认值: `COSINE`
+- 可选项: `COSINE`, `IP`, `L2`
+- 描述: 指定 Milvus 中向量相似度搜索的度量类型。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MILVUS_HNSW_M`
+
+- 类型: `int`
+- 默认值: `16`
+- 描述: 指定 Milvus 中 HNSW 索引类型的 `M` 参数。这会影响构建索引期间为每个新元素创建的双向链接数量。仅在 `MILVUS_INDEX_TYPE` 为 `HNSW` 时适用。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MILVUS_HNSW_EFCONSTRUCTION`
+
+- 类型: `int`
+- 默认值: `100`
+- 描述: 指定 Milvus 中 HNSW 索引类型的 `efConstruction` 参数。这会影响索引构建期间最近邻动态列表的大小。仅在 `MILVUS_INDEX_TYPE` 为 `HNSW` 时适用。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MILVUS_IVF_FLAT_NLIST`
+
+- 类型: `int`
+- 默认值: `128`
+- 描述: 指定 Milvus 中 IVF_FLAT 索引类型的 `nlist` 参数。这是聚类单元的数量。仅在 `MILVUS_INDEX_TYPE` 为 `IVF_FLAT` 时适用。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MILVUS_DISKANN_MAX_DEGREE`
+
+- 类型: `int`
+- 默认值: `56`
+- 描述: 设置 Milvus 处于 DISKANN 索引模式时的最大度数 (max degree)。通常建议保持默认值。
+
+#### `MILVUS_DISKANN_SEARCH_LIST_SIZE`
+
+- 类型: `int`
+- 默认值: `100`
+- 描述: 设置 Milvus DISKANN 搜索列表大小。通常建议保持默认值。
+
+#### `ENABLE_MILVUS_MULTITENANCY_MODE`
+
+- 类型: `bool`
+- 默认值: `false`
+- 描述: 为 Milvus 集合管理启用“多租户（multitenancy）”模式。通过合并相似的向量数据结构，显著降低 RAM 占用和计算开销。控制 Milvus 是否使用多租户集合架构。启用后，所有向量数据将合并到 5 个共享集合（memories, knowledge, files, web_search, hash_based）中，而不是为每个资源创建单独的集合。数据隔离通过 `resource_id` 字段而非集合级分离来实现。
+
+:::info
+
+**多租户模式的优势：**
+- 显著降低 RAM 消耗（5 个集合对比可能有数百个集合）
+- 降低集合管理的计算开销
+- 冷启动速度更快
+- 减轻索引维护负担
+
+**技术实现：**
+- 所有 memories 进入 `{prefix}_memories`
+- 所有 knowledge bases 进入 `{prefix}_knowledge`
+- 所有上传的文件进入 `{prefix}_files`
+- 网页搜索结果进入 `{prefix}_web_search`
+- 基于哈希的集合进入 `{prefix}_hash_based`
+- 每个条目都包含一个与原始集合名称匹配的 `resource_id` 字段
+- 查询会自动通过 `resource_id` 过滤，以保持数据隔离
+
+:::
+
+| 集合变量                    | 默认名称 (后缀)     | 代码中的触发 / 路由逻辑                      | 用途                            |
+|:------------------------|:--------------|:-----------------------------------|:------------------------------|
+| `HASH_BASED_COLLECTION` | `_hash_based` | 集合名称为 **63 位十六进制字符串** (SHA256 哈希)。 | 配合 `#` 功能缓存直接获取的 URL (网站)。    |
+| `MEMORY_COLLECTION`     | `_memories`   | 集合名称以 **`user-memory-`** 开头。       | 存储实验性记忆系统中用户特定的长期记忆。          |
+| `FILE_COLLECTION`       | `_files`      | 集合名称以 **`file-`** 开头。              | 存储上传的文档 (PDF, DOCX 等)。        |
+| `WEB_SEARCH_COLLECTION` | `_web_search` | 集合名称以 **`web-search-`** 开头。        | 存储来自搜索引擎查询的临时结果。              |
+| `KNOWLEDGE_COLLECTION`  | `_knowledge`  | **其他所有情况** (默认回退)。                 | 存储显式创建的知识库 (Knowledge Bases)。 |
+
+:::info
+
+**从传统模式迁移到多租户模式**
+
+**在已有正常 Milvus 数据库及数据的情况下启用多租户会发生什么：**
+- 现有集合 (模式: `open_webui_{collection_name}`) 仍保留在 Milvus 中，但对 Open WebUI **变得不可访问**
+- 新数据将写入 5 个共享的多租户集合
+- 在重新索引之前，应用程序会将知识库视为为空
+- 文件和记忆**不会**自动迁移到新的集合架构，且会显示为缺失
+
+**从普通 Milvus 迁移到多租户 Milvus 的清理路径：**
+- 在启用多租户前，尽可能从 UI 导出任何关键知识内容
+- 设置 `ENABLE_MILVUS_MULTITENANCY_MODE=true` 并重启 Open WebUI
+- 前往 `管理员设置 > 文档 > 点击“重新索引知识库”`
+
+**此操作仅将知识库向量重建到新的多租户集合中**
+**文件、用户记忆和网页搜索历史记录不会通过此操作迁移**
+
+**验证知识库是否可访问且功能正常**
+- 如果基于文件的检索至关重要，请重新上传文件（文件元数据保留，但向量未迁移）
+- 用户聊天记忆需要通过新的对话重新生成
+
+**清理旧集合：**
+成功迁移（从 Milvus 到多租户 Milvus）后，旧集合仍会占用资源。请手动删除它们：
+- 使用原生客户端 (pymilvus 或 Attu UI) 连接到 Milvus
+- 删除所有旧集合
+
+**当前 UI 的局限性：**
+- 不存在一键“迁移并清理”按钮
+- UI 中的向量数据库重置（管理员设置 > 文档 > 重置向量存储/知识库）仅影响当前模式下的集合
+- 旧集合需要通过 Milvus 客户端工具手动清理
+
+:::
+
+:::warning
+
+**关键注意事项**
+
+**在现有安装上启用多租户前：**
+- 数据丢失风险：文件向量和用户记忆向量不会自动迁移。只有知识库内容可以重新索引（迁移）。
+- 集合命名依赖：多租户依赖于 Open WebUI 内部的集合命名约定 (user-memory-, file-, web-search-, hash 模式)。**如果 Open WebUI 在未来的更新中更改了这些约定，多租户路由可能会失效，导致跨隔离资源的数据损坏或检索错误。**
+- 不支持自动回滚：写入数据后禁用多租户将无法恢复对共享集合的访问。数据需要手动提取并重新导入。
+
+对于全新安装，不存在迁移问题。
+
+**对于拥有重要数据的现有安装：**
+- 如果您不想处理迁移问题并承担数据丢失风险，请勿迁移到多租户模式
+- 请理解文件和记忆需要重新上传/重新生成
+- 请先在备份/分段环境中测试迁移
+- 考量 RAM 的节省是否值得为您的用例付出迁移成本
+
+**执行完整重置并切换到多租户模式：**
+- 在外部备份所有关键知识库内容
+- 前往 `管理员设置 > 文档`
+- 点击 `重置向量存储/知识库` (这将删除所有当前模式的集合和存储的知识元数据)
+- 设置 `ENABLE_MILVUS_MULTITENANCY_MODE=true`
+- 重启 Open WebUI
+- 从头开始重新上传/重新创建知识库
+
+:::
+
+:::warning
+
+多租户映射依赖于 Open WebUI 当前的集合命名惯例。
+
+如果 Open WebUI 更改了生成集合名称的方式（例如："user-memory-" 前缀、"file-" 前缀、网页搜索模式或哈希格式），此映射将失效，并会将数据路由到错误的集合中。
+**可能导致严重的数据损坏、数据一致性问题以及数据库内的错误数据映射。**
+
+如果您使用多租户模式，应始终在升级前检查集合名称及数据映射是否有任何更改，并谨慎升级（准备好快照 and 备份以便回滚）！
+
+:::
+
+#### `MILVUS_COLLECTION_PREFIX`
+
+- 类型: `str`
+- 默认值: `open_webui`
+- 描述: 设置 Milvus 集合名称的前缀。在多租户模式下，集合变为 `{prefix}_memories`, `{prefix}_knowledge` 等。在传统模式下，集合为 `{prefix}_{collection_name}`。更改此值将创建一个完全独立的命名空间——带有旧前缀的现有集合对 Open WebUI 变得不可见，但仍保留在 Milvus 中消耗资源。这用于在共享的 Milvus 服务器上实现真正的多实例隔离，而非用于两种模式间的迁移。Milvus 仅接受下划线，不支持连字符/短横杠，否则会导致错误。
+
+### OpenSearch (OpenSearch)
+
+#### `OPENSEARCH_CERT_VERIFY`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用 OpenSearch 证书验证。
+
+#### `OPENSEARCH_PASSWORD`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置 OpenSearch 的密码。
+
+#### `OPENSEARCH_SSL`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用 OpenSearch 的 SSL。
+
+#### `OPENSEARCH_URI`
+
+- 类型: `str`
+- 默认值: `https://localhost:9200`
+- 描述: 设置 OpenSearch 的 URI。
+
+#### `OPENSEARCH_USERNAME`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置 OpenSearch 的用户名。
+
+### PGVector (PGVector)
+
+:::note
+
+PostgreSQL 依赖项
+要使用 `pgvector`，请确保已安装 PostgreSQL 依赖项：
+
+```bash
+pip install open-webui[all]
+```
+
+:::
+
+#### `PGVECTOR_DB_URL`
+
+- 类型: `str`
+- 默认值: `DATABASE_URL` 环境变量的值
+- 描述: 设置用于模型存储的数据库 URL。
+
+#### `PGVECTOR_INITIALIZE_MAX_VECTOR_LENGTH`
+
+- 类型: `str`
+- 默认值: `1536`
+- 描述: 指定用于 PGVector 初始化的最大向量长度。
+
+#### `PGVECTOR_CREATE_EXTENSION`
+
+- 类型: `str`
+- 默认值: `true`
+- 描述: 在数据库中创建向量 (vector) 扩展。
+
+:::info
+
+如果设为 `false`，Open WebUI 将假定存储嵌入的 PostgreSQL 数据库已预先配置好 `vector` 扩展。这也允许 Open WebUI 以非超级用户数据库用户的身份运行。
+
+:::
+
+#### `PGVECTOR_INDEX_METHOD`
+
+- 类型: `str`
+- 可选项:
+  - `ivfflat` - 使用带有平铺压缩的倒排文件，更适合维度较多的数据集。
+  - `hnsw` - 使用分层导航小世界 (Hierarchical Navigable Small World) 图，通常提供更好的查询性能。
+- 默认值: 未指定 (PGVector 将使用其默认值)
+- 描述: 指定 PGVector 的索引方法。选择将影响查询性能和索引构建时间。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+选择索引方法时，请考虑您的数据集大小和查询模式。HNSW 通常提供更好的查询性能但占用更多内存，而 IVFFlat 对于较大的数据集可能更节省内存。
+
+:::
+
+#### `PGVECTOR_HNSW_M`
+
+- 类型: `int`
+- 默认值: `16`
+- 描述: HNSW 索引参数，控制索引构建期间每层最大双向连接数。较高的值可提高召回率，但会增加索引大小和构建时间。仅在 `PGVECTOR_INDEX_METHOD` 设置为 `hnsw` 时适用。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `PGVECTOR_HNSW_EF_CONSTRUCTION`
+
+- 类型: `int`
+- 默认值: `64`
+- 描述: HNSW 索引参数，控制索引构建期间动态候选列表的大小。较高的值可提高索引质量，但会增加构建时间。仅在 `PGVECTOR_INDEX_METHOD` 设置为 `hnsw` 时适用。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `PGVECTOR_IVFFLAT_LISTS`
+
+- 类型: `int`
+- 默认值: `100`
+- 描述: IVFFlat 索引参数，指定要创建的倒排列表（聚类）数量。一个好的起点是：100 万行以内为 `行数 / 1000`，100 万行以上为 `sqrt(行数)`。仅在 `PGVECTOR_INDEX_METHOD` 设置为 `ivfflat` 时适用。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+对于 IVFFlat 索引，选择合适的列表数量对查询性能至关重要。列表太少会导致查询缓慢，而列表太多会增加索引大小且不会带来显著的性能提升。
+
+:::
+
+#### `PGVECTOR_USE_HALFVEC`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用使用 `halfvec` 数据类型而非 `vector` 来存储嵌入。当 `PGVECTOR_INITIALIZE_MAX_VECTOR_LENGTH` 超过 2000 维时必填，因为 `vector` 类型有 2000 维的限制。
+
+#### `PGVECTOR_PGCRYPTO`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 为 PGVector 内的敏感数据加密启用 `pgcrypto` 扩展。启用后，必须设置 `PGVECTOR_PGCRYPTO_KEY`。
+
+#### `PGVECTOR_PGCRYPTO_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 当启用 `PGVECTOR_PGCRYPTO` 时指定加密密钥。必须是一个安全的、随机生成的密钥。
+
+#### `PGVECTOR_POOL_SIZE`
+
+- 类型: `int`
+- 默认值: `None`
+- 描述: 设置 PGVector 数据库连接池中应保持的连接数量。如果未设置，则使用 SQLAlchemy 默认值。
+
+#### `PGVECTOR_POOL_MAX_OVERFLOW`
+
+- 类型: `int`
+- 默认值: `0`
+- 描述: 指定在连接池耗尽时，可以在 `PGVECTOR_POOL_SIZE` 之外创建的最大连接数。
+
+#### `PGVECTOR_POOL_TIMEOUT`
+
+- 类型: `int`
+- 默认值: `30`
+- 描述: 设置从 PGVector 连接池获取连接的超时秒数。
+
+#### `PGVECTOR_POOL_RECYCLE`
+
+- 类型: `int`
+- 默认值: `3600`
+- 描述: 指定 PGVector 连接池中连接回收的时间（秒），以防止出现陈旧连接。
+
+
+### Qdrant (Qdrant)
+
+:::warning
+
+Qdrant 并非由 Open WebUI 团队主动维护。它是社区贡献的补充，由社区维护。
+如果您想使用 Qdrant，请在升级 Open WebUI 时格外小心（执行备份并创建快照以便回滚），以防 Open WebUI 的内部更改导致其失效。
+
+:::
+
+#### `QDRANT_API_KEY`
+
+- 类型: `str`
+- 描述: 为 Qdrant 设置 API 密钥。
+
+#### `QDRANT_URI`
+
+- 类型: `str`
+- 描述: 为 Qdrant 设置 URI。
+
+#### `QDRANT_ON_DISK`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用 memmap（也称为磁盘上/on-disk）存储。
+
+#### `QDRANT_PREFER_GRPC`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 尽可能使用 gRPC 接口。
+
+:::info
+
+如果设置为 `True`，且 `QDRANT_URI` 指向一个启用了 TLS 且证书由私有 CA 签名的自托管服务器，请将环境变量 `GRPC_DEFAULT_SSL_ROOTS_FILE_PATH` 设置为您的 PEM 编码 CA 证书文件的路径。更多信息请参见 [gRPC Core 文档](https://grpc.github.io/grpc/core/md_doc_environment_variables.html)。
+
+:::
+
+#### `QDRANT_GRPC_PORT`
+
+- 类型: `int`
+- 默认值: `6334`
+- 描述: 为 Qdrant 设置 gRPC 端口号。
+
+#### `QDRANT_TIMEOUT`
+
+- 类型: `int`
+- 默认值: `5`
+- 描述: 设置向 Qdrant 服务器发出的所有请求的超时秒数，有助于防止长时间运行的查询阻塞应用程序。
+
+#### `QDRANT_HNSW_M`
+
+- 类型: `int`
+- 默认值: `16`
+- 描述: 控制 HNSW (Hierarchical Navigable Small World) 索引构建。在标准模式下，此项设置 `m` 参数。在多租户模式下，此值用于 `payload_m` 参数以针对负载 (payload) 构建索引，因为出于性能考虑，全局 `m` 已根据 Qdrant 最佳实践被禁用。
+
+#### `ENABLE_QDRANT_MULTITENANCY_MODE`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 为 Qdrant 集合管理启用多租户模式，通过合并相似的向量数据结构，显著降低 RAM 占用和计算开销。建议开启。
+
+:::info
+
+开启此项后，将断开之前以非多租户模式创建的所有 Qdrant 集合。请前往 `管理员设置 > 文档 > 重新索引知识库` 以迁移现有知识。
+
+之前模式创建的 Qdrant 集合仍会消耗资源。
+
+目前，界面中没有单独重置向量数据库的按钮。如果您想将知识迁移到多租户模式：
+- 使用原生 Qdrant 客户端删除所有带有 `open_webui-knowledge` 前缀（或 `open_webui` 前缀以删除所有 Open WebUI 相关集合）的项目。
+- 前往 `管理员设置 > 文档 > 重新索引知识库` 以迁移现有知识库。
+
+“重新索引知识库”将**仅**迁移知识库。
+
+:::
+
+:::danger
+
+如果您决定使用多租户模式作为默认，且不需要迁移旧知识，请前往 `管理员设置 > 文档` 重置向量和知识库，这将删除所有带有 `open_webui` 前缀的集合及已存储的所有知识库。
+
+:::
+
+:::warning
+
+多租户映射依赖于 Open WebUI 当前的集合命名惯例。
+
+如果 Open WebUI 更改了生成集合名称的方式（例如："user-memory-" 前缀、"file-" 前缀、网页搜索模式或哈希格式），此映射将失效，并会将数据路由到错误的集合中。
+**可能导致严重的数据损坏、数据一致性问题以及数据库内的错误数据映射。**
+
+如果您使用多租户模式，应始终在升级前检查集合名称及数据映射是否有任何更改，并谨慎升级（准备好快照 and 备份以便回滚）！
+
+:::
+
+#### `QDRANT_COLLECTION_PREFIX`
+
+- 类型: `str`
+- 默认值: `open-webui`
+- 描述: 设置 Qdrant 集合名称的前缀。对于命名空间划分或隔离集合很有用，尤其是在多租户模式下。更改此值将导致应用程序在 Qdrant 中使用一套全新的集合。具有不同前缀的现有集合将不受影响。
+
+### Pinecone (Pinecone)
+
+使用 Pinecone 作为向量存储时，以下环境变量用于控制其行为。请务必在您的 `.env` 文件或部署环境中设置这些变量。
+
+#### `PINECONE_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置用于 Pinecone 服务身份验证的 API 密钥。
+
+#### `PINECONE_ENVIRONMENT`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定要连接的 Pinecone 环境（例如 `us-west1-gcp`, `gcp-starter` 等）。
+
+#### `PINECONE_INDEX_NAME`
+
+- 类型: `str`
+- 默认值: `open-webui-index`
+- 描述: 定义将用于存储和查询向量嵌入的 Pinecone 索引名称。
+
+#### `PINECONE_DIMENSION`
+
+- 类型: `int`
+- 默认值: `1536`
+- 描述: 向量嵌入的维度。必须与索引预期的维度一致（根据所用模型，通常为 768, 1024, 1536 或 3072）。
+
+#### `PINECONE_METRIC`
+
+- 类型: `str`
+- 默认值: `cosine`
+- 可选项: `cosine`, `dotproduct`, `euclidean`
+- 描述: 指定用于 Pinecone 索引内向量比较的相似度度量。
+
+#### `PINECONE_CLOUD`
+
+- 类型: `str`
+- 默认值: `aws`
+- 可选项: `aws`, `gcp`, `azure`
+- 描述: 指定托管 Pinecone 索引的云服务商。
+
+### Weaviate (Weaviate)
+
+#### `WEAVIATE_HTTP_HOST`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 指定用于 HTTP 连接的 Weaviate 服务器主机名。
+
+#### `WEAVIATE_HTTP_PORT`
+
+- 类型: `int`
+- 默认值: `8080`
+- 描述: 指定连接到 Weaviate 服务器的 HTTP 端口。
+
+#### `WEAVIATE_GRPC_PORT`
+
+- 类型: `int`
+- 默认值: `50051`
+- 描述: 指定连接到 Weaviate 服务器的 gRPC 端口。
+
+#### `WEAVIATE_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 为 Weaviate 服务器身份验证设置 API 密钥。
+
+### Oracle 23ai 向量搜索 (oracle23ai)
+
+#### `ORACLE_DB_USE_WALLET`
+
+-   **类型**: `bool`
+-   **默认值**: `false`
+-   **描述**: 决定连接到 Oracle 数据库的方法。
+-   设置为 `false` 时，使用 `ORACLE_DB_DSN` 中的主机名、端口和服务名进行直接连接（例如：连接到 Oracle Database 23ai Free 或 DBCS 实例）。
+-   设置为 `true` 时，使用基于 Wallet 的连接（例如：连接到 Oracle 自主数据库 (ADW/ATP)）。当为 `true` 时，还必须配置 `ORACLE_WALLET_DIR` 和 `ORACLE_WALLET_PASSWORD`。
+
+#### `ORACLE_DB_USER`
+
+-   **类型**: `str`
+-   **默认值**: `DEMOUSER`
+-   **描述**: 指定连接 Oracle 数据库所用的用户名。
+
+#### `ORACLE_DB_PASSWORD`
+
+-   **类型**: `str`
+-   **默认值**: `Welcome123456`
+-   **描述**: 指定 `ORACLE_DB_USER` 的密码。
+
+#### `ORACLE_DB_DSN`
+
+-   **类型**: `str`
+-   **默认值**: `localhost:1521/FREEPDB1`
+-   **描述**: 定义 Oracle 数据库连接数据源名称 (Data Source Name)。
+-   如果 `ORACLE_DB_USE_WALLET` 为 `false`，则格式应为 `主机名:端口/服务名` (例如：`localhost:1521/FREEPDB1`)。
+-   如果 `ORACLE_DB_USE_WALLET` 为 `true`，则可以是 TNS 别名 (例如 ADW/ATP 的 `medium`)，或者完整的连接字符串。
+
+#### `ORACLE_WALLET_DIR`
+
+-   **类型**: `str`
+-   **默认值**: 空字符串 (' ')
+-   **描述**: **当 `ORACLE_DB_USE_WALLET` 为 `true` 时必填**。指定包含 Oracle 云 Wallet 文件（如 `cwallet.sso`, `sqlnet.ora`, `tnsnames.ora`）的目录绝对路径。
+
+#### `ORACLE_WALLET_PASSWORD`
+
+-   **类型**: `str`
+-   **默认值**: 空字符串 (' ')
+-   **描述**: **当 `ORACLE_DB_USE_WALLET` 为 `true` 时必填**。指定 Oracle 云 Wallet 的密码。
+
+#### `ORACLE_VECTOR_LENGTH`
+
+-   **类型**: `int`
+-   **默认值**: `768`
+-   **描述**: 设置存储在 Oracle 数据库中的向量嵌入的预期维度或长度。这必须与使用的嵌入模型相匹配。
+
+#### `ORACLE_DB_POOL_MIN`
+
+-   **类型**: `int`
+-   **默认值**: `2`
+-   **描述**: Oracle 数据库连接池中应保持的最小连接数。
+
+#### `ORACLE_DB_POOL_MAX`
+
+-   **类型**: `int`
+-   **默认值**: `10`
+-   **描述**: Oracle 数据库连接池中允许的最大连接数。
+
+#### `ORACLE_DB_POOL_INCREMENT`
+
+-   **类型**: `int`
+-   **默认值**: `1`
+-   **描述**: 当连接池需要扩容时创建的连接数量。
+
+### S3 向量存储桶 (S3 Vector Bucket)
+
+使用 S3 Vector Bucket 作为向量存储时，以下环境变量用于控制其行为。请务必在您的 `.env` 文件或部署环境中设置这些变量。
+
+:::info
+
+注意：此配置假定您的 Open WebUI 环境可以获取 AWS 凭据。这可以通过环境变量（如 `AWS_ACCESS_KEY_ID` 和 `AWS_SECRET_ACCESS_KEY`）或通过 IAM 角色权限来实现。
+
+:::
+
+#### `S3_VECTOR_BUCKET_NAME`
+
+- 类型: `str`
+- 描述: 指定用于存储向量的 S3 Vector Bucket 名称。
+
+#### `S3_VECTOR_REGION`
+
+- 类型: `str`
+- 描述: 指定托管 S3 Vector Bucket 的 AWS 区域。
+
+## RAG 内容提取引擎 (RAG Content Extraction Engine)
+
+#### `CONTENT_EXTRACTION_ENGINE`
+
+- 类型: `str`
+- 可选项:
+  - 留空表示使用默认值
+  - `external` - 使用外部加载器
+  - `tika` - 使用本地 Apache Tika 服务器
+  - `docling` - 使用 Docling 引擎
+  - `document_intelligence` - 使用 Document Intelligence 引擎
+  - `mistral_ocr` - 使用 Mistral OCR 引擎
+  - `mineru`
+- 描述: 设置用于文档摄取的内容提取引擎。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MISTRAL_OCR_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定要使用的 Mistral OCR API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MISTRAL_OCR_API_BASE_URL`
+
+- 类型: `str`
+- 默认值: `https://api.mistral.ai/v1`
+- 描述: 配置自定义的 Mistral OCR API 端点，以实现灵活的部署选项，允许用户指向自托管或替代的 Mistral OCR 实例。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `EXTERNAL_DOCUMENT_LOADER_URL`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置外部文档加载器服务的 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `EXTERNAL_DOCUMENT_LOADER_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置用于与外部文档加载器服务进行身份验证的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `TIKA_SERVER_URL`
+
+- 类型: `str`
+- 默认值: `http://localhost:9998`
+- 描述: 设置 Apache Tika 服务器的 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `DOCLING_SERVER_URL`
+
+- 类型: `str`
+- 默认值: `http://docling:5001`
+- 描述: 指定 Docling 服务器的 URL。为了与新的基于参数的配置系统完全兼容，需要 Docling 2.0.0 或更高版本。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::warning
+
+**需要 Docling 2.0.0+**
+
+Docling 集成已重构为使用服务器端参数传递。如果您正在使用 Docling：
+
+1. 升级到 Docling 服务器 2.0.0 或更高版本。
+2. 将所有独立的 `DOCLING_*` 配置变量迁移到 `DOCLING_PARAMS` JSON 对象中。
+3. 从您的配置中移除所有已弃用的 `DOCLING_*` 环境变量。
+4. 如果您的服务器需要身份验证，请添加 `DOCLING_API_KEY`。
+
+旧的单个环境变量（`DOCLING_OCR_ENGINE`, `DOCLING_OCR_LANG` 等）不再受支持，并将被忽略。
+
+:::
+
+#### `DOCLING_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置用于 Docling 服务器身份验证的 API 密钥。当 Docling 服务器启用了身份验证时必填。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `DOCLING_PARAMS`
+
+- 类型: `str` (JSON)
+- 默认值: `{}`
+- 描述: 以 JSON 格式指定所有 Docling 处理参数。这是配置 Docling 处理选项的主要方法。以前所有单独的 Docling 设置现在都通过这个单一的 JSON 对象进行配置。
+
+**支持的参数：**
+- `do_ocr` (bool): 启用 OCR 处理。
+- `force_ocr` (bool): 即使存在文本层也强制进行 OCR。
+- `ocr_engine` (str): 要使用的 OCR 引擎。选项：`tesseract`, `easyocr`, `ocrmac`, `rapidocr`, `tesserocr`。
+- `ocr_lang` (list[str]): OCR 语言代码。注意：格式取决于引擎（例如：Tesseract 使用 `["eng", "fra"]`；EasyOCR 使用 `["en", "fr"]`）。
+- `pdf_backend` (str): PDF 处理后端。选项：`dlparse_v1`, `dlparse_v2`, `dlparse_v4`, `pypdfium2`。
+- `table_mode` (str): 表格提取模式。选项：`fast`, `accurate`。
+- `pipeline` (str): 要使用的处理流水线。选项：`fast`, `standard`。
+- `do_picture_description` (bool): 启用图像描述生成。
+- `picture_description_mode` (str): 图像描述模式。选项：`local`, `api`。
+- `picture_description_local` (str): 用于图像描述的本地模型配置对象。
+- `picture_description_api` (str): 用于图像描述的 API 端点配置对象。
+- `vlm_pipeline_model_api` (str): 视觉语言模型 (VLM) API 配置（例如 `openai://gpt-4o`）。
+
+- 示例：
+```json
+{
+  "do_ocr": true,
+  "ocr_engine": "tesseract",
+  "ocr_lang": ["eng", "fra", "deu", "spa"],
+  "force_ocr": false,
+  "pdf_backend": "dlparse_v4",
+  "table_mode": "accurate",
+  "do_picture_description": true,
+  "picture_description_mode": "api",
+  "vlm_pipeline_model_api": "openai://gpt-4o"
+}
+```
+
+:::tip
+**dlparse** 还是 **dbparse**：请注意后端名称使用的是 **`dlparse`** (Deep Learning Parse)，而非 `dbparse`。对于现代 Docling (v2+)，通常推荐使用 `dlparse_v4` 以获得最佳的功能平衡。
+:::
+
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+**从单个 Docling 变量迁移**
+
+如果您之前使用的是单个 `DOCLING_*` 环境变量（如 `DOCLING_OCR_ENGINE`, `DOCLING_OCR_LANG` 等），这些现在已弃用。您必须迁移到使用 `DOCLING_PARAMS` 作为单一的 JSON 配置对象。
+
+**迁移示例：**
+```bash
+# 旧配置 (已弃用)
+DOCLING_OCR_ENGINE=tesseract
+DOCLING_OCR_LANG=eng,fra
+DOCLING_DO_OCR=true
+
+# 新配置 (必填)
+DOCLING_PARAMS='{"do_ocr": true, "ocr_engine": "tesseract", "ocr_lang": "eng,fra"}'
+```
+
+:::
+
+:::warning
+
+在 `.env` 文件中设置此环境变量时，请确保 JSON 格式正确并按需转义引号：
+```
+DOCLING_PARAMS="{\"do_ocr\": true, \"ocr_engine\": \"tesseract\", \"ocr_lang\": \"eng,fra,deu,spa\"}"
+```
+
+:::
+
+#### `MINERU_API_TIMEOUT`
+
+- 类型: `str`
+- 默认值: `300`
+- 描述: 设置文档处理期间 MinerU API 请求的超时秒数。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+## 检索增强生成 (RAG)
+
+### 核心配置
+
+#### `RAG_EMBEDDING_ENGINE`
+
+- 类型: `str`
+- 可选项:
+  - 留空表示 `默认 (SentenceTransformers)` - 使用 SentenceTransformers 进行嵌入。
+  - `ollama` - 使用 Ollama API 进行嵌入。
+  - `openai` - 使用 OpenAI API 进行嵌入。
+  - `azure_openai` - 使用 Azure OpenAI 服务进行嵌入。
+- 描述: 选择用于 RAG 的嵌入引擎。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_EMBEDDING_MODEL`
+
+- 类型: `str`
+- 默认值: `sentence-transformers/all-MiniLM-L6-v2`
+- 描述: 设置嵌入模型。在本地，使用 Sentence-Transformer 模型。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_TOP_K`
+
+- 类型: `int`
+- 默认值: `3`
+- 描述: 设置使用 RAG 时考虑嵌入结果的默认数量。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_TOP_K_RERANKER`
+
+- 类型: `int`
+- 默认值: `3`
+- 描述: 设置使用 RAG 时重排序器 (reranker) 所考虑结果的默认数量。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_RELEVANCE_THRESHOLD`
+
+- 类型: `float`
+- 默认值: `0.0`
+- 描述: 设置文档的相关性阈值（用于重排序时）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_RAG_HYBRID_SEARCH`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用使用 `BM25` + `ChromaDB` 的组合搜索，并使用 `sentence_transformers` 模型进行重排序。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_HYBRID_BM25_WEIGHT`
+
+- 类型: `float`
+- 默认值: `0.5`
+- 描述: 设置混合搜索期间给予关键词搜索 (BM25) 的权重。1 表示仅使用关键词搜索，0 表示仅使用向量搜索。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_RAG_HYBRID_SEARCH_ENRICHED_TEXTS`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 通过在索引文本中补充文档元数据（包括文件名、标题、章节和摘录），来增强 BM25 混合搜索。这提高了基于元数据的查询的关键词召回率，使搜索除了正文内容外，还能匹配文档名称和结构元素。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+启用此功能会增加 BM25 索引的文本量，这可能会影响存储需求和索引性能。然而，从内容本身以外，当用户基于文档名称、标题或结构元素进行查询时，它会显著改善搜索结果。
+
+:::
+
+#### `RAG_TEMPLATE`
+
+- 类型: `str`
+- 默认值: 环境变量 `DEFAULT_RAG_TEMPLATE` 的值。
+
+`DEFAULT_RAG_TEMPLATE`:
+
+```
+
+### 任务:
+使用提供的上下文回答用户查询。**仅当 `<source>` 标签包含明确的 `id` 属性时**（例如 `<source id="1">`），才使用 `[id]` 格式加入文中引用。
+
+### 准则:
+- 如果你不知道答案，请明确声明。
+- 如果不确定，请要求用户进行澄清。
+- 使用与用户查询相同的语言进行回答。
+- 如果上下文无法读取或质量低劣，请告知用户并提供尽可能好的回答。
+- 如果答案不在上下文中，但你拥有相关知识，请向用户说明，并根据你自己的理解提供答案。
+- **仅当 `<source>` 标签包含 `id` 属性时，才使用 `[id]`（例如 `[1]`, `[2]`）进行文中引用。**
+- 如果 `<source>` 标签不包含 `id` 属性，请勿引用。
+- 不要在回答中使用 XML 标签。
+- 确保引用简洁，并与提供的信息直接相关。
+
+### 引用示例:
+如果用户询问某个特定话题，而相关信息出现在带有 `id` 属性的来源中，回答应包含引用，如下例所示：
+* “根据该研究，所提出的方法使效率提高了 20% [1]。”
+
+### 输出:
+对用户的查询提供清晰直接的回答。仅当上下文中存在带有 `id` 属性的 `<source>` 标签时，才加入 `[id]` 格式的文中引用。
+
+<context>
+{{CONTEXT}}
+</context>
+
+<user_query>
+{{QUERY}}
+</user_query>
+```
+
+- 描述: 在将 RAG 文档注入聊天补全时使用的模板。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 文档处理 (Document Processing)
+
+#### `CHUNK_SIZE`
+
+- 类型: `int`
+- 默认值: `1000`
+- 描述: 设置用于嵌入的文档块 (chunk) 大小。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `CHUNK_OVERLAP`
+
+- 类型: `int`
+- 默认值: `100`
+- 描述: 指定块之间应有多少重叠。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_TEXT_SPLITTER`
+
+- 类型: `str`
+- 可选项:
+  - `character`
+  - `token`
+  - `markdown_header`
+- 默认值: `character`
+- 描述: 为 RAG 模型设置文本拆分器。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `TIKTOKEN_CACHE_DIR`
+
+- 类型: `str`
+- 默认值: `{CACHE_DIR}/tiktoken`
+- 描述: 设置 TikToken 缓存目录。
+
+#### `TIKTOKEN_ENCODING_NAME`
+
+- 类型: `str`
+- 默认值: `cl100k_base`
+- 描述: 设置 TikToken 的编码名称。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `PDF_EXTRACT_IMAGES`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 在加载文档时，使用 OCR 从 PDF 中提取图像。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_FILE_MAX_SIZE`
+
+- 类型: `int`
+- 描述: 设置用于文档摄取的可上传文件最大大小（单位：MB）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_FILE_MAX_COUNT`
+
+- 类型: `int`
+- 描述: 设置文档摄取时一次可上传的最大文件数量。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_ALLOWED_FILE_EXTENSIONS`
+
+- 类型: `list` (字符串列表)
+- 默认值: `[]` (表示允许所有支持的文件类型)
+- 描述: 指定允许上传的文件扩展名。
+
+```json
+["pdf,docx,txt"]
+```
+
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+在配置 `RAG_FILE_MAX_SIZE` 和 `RAG_FILE_MAX_COUNT` 时，请确保数值合理，以防止过量的文件上传和潜在的性能问题。
+
+:::
+
+### 嵌入引擎配置 (Embedding Engine Configuration)
+
+#### 通用嵌入设置
+
+#### `RAG_EMBEDDING_BATCH_SIZE`
+
+- 类型: `int`
+- 默认值: `1`
+- 描述: 控制在使用外部嵌入提供商（Ollama, OpenAI 或 Azure OpenAI）时，单个 API 请求中嵌入多少个文本块。较高的值（20-100+；最大 16000（不推荐））可以通过发送较少但较大的 API 请求来加快文档处理速度。某些外部 API 不支持批量处理或每个请求发送超过 1 个块。在这种情况下，您必须将其保持为 `1`。默认值为 1（如果 API 不支持批量处理，这是最安全的选择）。此设置仅适用于外部嵌入引擎，不影响默认的 SentenceTransformers 引擎。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+请检查您的 API 和嵌入模型是否支持批量处理。
+仅在支持的情况下增加此变量的值，否则可能会遇到意外问题。
+
+:::
+
+#### `ENABLE_ASYNC_EMBEDDING`
+
+- 类型: `bool`
+- 默认值: `true`
+- 描述: 异步（并行）运行嵌入任务以获得最大性能。仅适用于 Ollama, OpenAI 和 Azure OpenAI，不影响 SentenceTransformer 设置。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::tip
+
+如果开启异步嵌入的同时有许多其他用户在并发使用您的 Open WebUI 实例，可能需要增加 `THREAD_POOL_SIZE` 的值，以防止出现问题。
+
+:::warning
+
+启用此项可能会每分钟发送数千个请求。
+如果您在本地进行嵌入，请确保能够处理这种请求量，否则请关闭此项以返回到串行嵌入（较慢但始终有效）。
+如果您通过 API 进行外部嵌入，请确保您的速率限制 (rate limits) 足够高以处理并行嵌入。
+（通常，即使是最低的 API 级别，OpenAI 每分钟也能处理数千个嵌入请求）。
+
+:::
+
+#### `RAG_EMBEDDING_CONTENT_PREFIX`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定 RAG 嵌入内容的潜缀。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_EMBEDDING_PREFIX_FIELD_NAME`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定 RAG 嵌入前缀的字段名称。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_EMBEDDING_QUERY_PREFIX`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定 RAG 嵌入查询的前缀。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### OpenAI 嵌入 (OpenAI Embeddings)
+
+#### `RAG_OPENAI_API_BASE_URL`
+
+- 类型: `str`
+- 默认值: `${OPENAI_API_BASE_URL}`
+- 描述: 设置用于 RAG 嵌入的 OpenAI API 基础 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_OPENAI_API_KEY`
+
+- 类型: `str`
+- 默认值: `${OPENAI_API_KEY}`
+- 描述: 设置用于 RAG 嵌入的 OpenAI API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_EMBEDDING_OPENAI_BATCH_SIZE`
+
+- 类型: `int`
+- 默认值: `1`
+- 描述: 设置 OpenAI 嵌入的批量大小。
+
+#### Azure OpenAI 嵌入 (Azure OpenAI Embeddings)
+
+#### `RAG_AZURE_OPENAI_BASE_URL`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 当使用 Azure OpenAI 进行 RAG 嵌入时，设置 Azure OpenAI 服务的属性 URL。格式应为 `https://{您的资源名称}.openai.azure.com`。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_AZURE_OPENAI_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 当使用 Azure OpenAI 进行 RAG 嵌入时，设置 Azure OpenAI 服务的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_AZURE_OPENAI_API_VERSION`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 当使用 Azure OpenAI 进行 RAG 嵌入时，设置 Azure OpenAI 服务的 API 版本。常见值包括 `2023-05-15`, `2023-12-01-preview` 或 `2024-02-01`。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### Ollama 嵌入 (Ollama Embeddings)
+
+#### `RAG_OLLAMA_BASE_URL`
+
+- 类型: `str`
+- 描述: 设置 RAG 模型中使用的 Ollama API 基础 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_OLLAMA_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 RAG 模型中使用的 Ollama API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 重排序 (Reranking)
+
+#### `RAG_RERANKING_MODEL`
+
+- 类型: `str`
+- 描述: 设置用于重排序结果的模型。在本地使用 Sentence-Transformer 模型。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_EXTERNAL_RERANKER_TIMEOUT`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 设置 RAG 文档检索期间外部重排序器 API 请求的超时秒数。留空则使用默认超时行为。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_EXTERNAL_RERANKER_URL`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 设置外部重排序 API 的 **完整 URL**。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::warning
+
+您**必须**提供完整的 URL，包括端点路径（例如：`https://api.yourprovider.com/v1/rerank`）。系统**不会**自动在您提供的基础 URL 后追加 `/v1/rerank` 或任何其他路径。
+
+:::
+
+#### `RAG_EXTERNAL_RERANKER_API_KEY`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 设置外部重排序 API 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 查询生成 (Query Generation)
+
+#### `ENABLE_RETRIEVAL_QUERY_GENERATION`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用检索查询生成。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_QUERIES_CACHE`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用 LLM 生成的搜索查询的请求级缓存。启用后，为网页搜索生成的查询将被**缓存**，并在同一请求中自动**重用于**文件/知识库检索。当网页搜索和 RAG 同时激活时，这可以**消除重复的 LLM 调用**，在保持搜索质量的同时**降低 Token 使用量和延迟**。在大型集群设置中强烈建议开启。
+
+#### `QUERY_GENERATION_PROMPT_TEMPLATE`
+
+- 类型: `str`
+- 默认值: 环境变量 `DEFAULT_QUERY_GENERATION_PROMPT_TEMPLATE` 的值。
+
+`DEFAULT_QUERY_GENERATION_PROMPT_TEMPLATE`:
+
+```
+
+### 任务:
+分析聊天记录，以确定在给定语言下生成搜索查询的必要性。默认情况下，**优先生成 1-3 个广泛且相关的搜索查询**，除非绝对确定不需要额外信息。目标是即使在极低的不确定性下，也能检索到全面、更新且有价值的信息。如果明确不需要搜索，请返回空列表。
+
+### 准则:
+- **仅**以 JSON 对象形式响应。严禁任何形式的额外评论、解释或附加文本。
+- 生成搜索查询时，请按如下格式响应：{ "queries": ["query1", "query2"] }，确保每个查询描述准确、简洁且与主题相关。
+- 当且仅当完全确定通过搜索无法检索到任何有用结果时，才返回：{ "queries": [] }。
+- 如果**有任何可能**提供有用或更新的信息，请倾向于建议搜索查询。
+- 简洁并专注于编写高质量的搜索查询，避免不必要的赘述、评论或假设。
+- 今天日期是：{{CURRENT_DATE}}。
+- 始终优先提供可操作力强且覆盖面广的查询，以最大化信息覆盖范围。
+
+### 输出:
+严格返回 JSON 格式：
+{
+  "queries": ["query1", "query2"]
+}
+
+### 聊天记录:
+<chat_history>
+{{MESSAGES:END:6}}
+</chat_history>
+```
+
+- 描述: 设置查询生成的提示模板。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 文档智能 (Document Intelligence - Azure)
+
+#### `DOCUMENT_INTELLIGENCE_ENDPOINT`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定文档智能 (Document Intelligence) 的端点。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `DOCUMENT_INTELLIGENCE_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定文档智能的密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `DOCUMENT_INTELLIGENCE_MODEL`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定文档智能的模型。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 高级设置 (Advanced Settings)
+
+#### `BYPASS_EMBEDDING_AND_RETRIEVAL`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 绕过嵌入和检索过程。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `RAG_FULL_CONTEXT`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 指定是否对 RAG 使用完整上下文。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_RAG_LOCAL_WEB_FETCH`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用 RAG 的本地网页获取。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### Google 云端硬盘 (Google Drive)
+
+#### `ENABLE_GOOGLE_DRIVE_INTEGRATION`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用 Google 云端硬盘集成。如果设为 true，且配置了 `GOOGLE_DRIVE_CLIENT_ID` 和 `GOOGLE_DRIVE_API_KEY`，Google 云端硬盘将作为上传选项出现在聊天界面中。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+在启用 `GOOGLE_DRIVE_INTEGRATION` 时，请确保您已正确配置 `GOOGLE_DRIVE_CLIENT_ID` 和 `GOOGLE_DRIVE_API_KEY`，并已查看 Google 的服务条款和使用指南。
+
+:::
+
+#### `GOOGLE_DRIVE_CLIENT_ID`
+
+- 类型: `str`
+- 描述: 设置 Google 云端硬盘的客户端 ID（客户端必须配置为已启用 Drive API 和 Picker API）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `GOOGLE_DRIVE_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 Google 云端硬盘集成的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### OneDrive (OneDrive)
+
+:::info
+
+有关分步设置指南，请查看我们的教程：[配置 OneDrive & SharePoint 集成](https://docs.openwebui.com/tutorials/integrations/onedrive-sharepoint/)。
+
+:::
+
+#### `ENABLE_ONEDRIVE_INTEGRATION`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 全局启用或禁用 Microsoft OneDrive 集成功能。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::warning
+
+配置 OneDrive 集成是一个多步骤过程，需要创建并正确配置 Azure 应用注册 (Azure App Registration)。
+身份验证流程还依赖于浏览器弹出窗口。请确保您的浏览器针对 Open WebUI 域名禁用了弹出窗口拦截器，以便显示身份验证和文件选择窗口。
+
+:::
+
+#### `ENABLE_ONEDRIVE_PERSONAL`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 控制附件菜单中是否出现“个人 OneDrive”选项。需要配置 `ONEDRIVE_PERSONAL_CLIENT_ID`。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_ONEDRIVE_BUSINESS`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 控制附件菜单中是否出现“工作/学校 OneDrive”选项。需要配置 `ONEDRIVE_CLIENT_ID`。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ONEDRIVE_CLIENT_ID`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: OneDrive 客户端 ID 的通用环境变量。您应该优先使用具体的 `ONEDRIVE_CLIENT_ID_PERSONAL` 或 `ONEDRIVE_CLIENT_ID_BUSINESS` 变量。此项作为向后兼容的旧选项存在。
+
+#### `ONEDRIVE_CLIENT_ID_PERSONAL`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定用于**个人 OneDrive** 集成的应用（客户端）ID。这需要一个配置为支持个人 Microsoft 帐户的独立 Azure 应用注册。**请勿在此处填写企业级 OneDrive 的客户端 ID！**
+
+#### `ONEDRIVE_CLIENT_ID_BUSINESS`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定用于**工作/学校（企业级）OneDrive** 集成的应用（客户端）ID。这需要一个配置为支持组织帐户的独立 Azure 应用注册。**请勿在此处填写个人 OneDrive 的客户端 ID！**
+
+:::info
+
+此客户端 ID（也称为应用 ID）是从您的 Microsoft Entra ID（前身为 Azure AD）租户内的 Azure 应用注册中获得的。
+在 Azure 中配置应用注册时，重定向 URI 必须设置为您的 Open WebUI 实例 URL，并配置为“单页应用程序 (SPA)”类型，身份验证才能成功。
+
+:::
+
+#### `ONEDRIVE_SHAREPOINT_URL`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定用于工作/学校集成的根 SharePoint 站点 URL，例如 `https://companyname.sharepoint.com`。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+此变量对于工作/学校集成至关重要。它应指向与您的租户关联的根 SharePoint 站点，从而允许访问 SharePoint 文档库。
+
+:::
+
+#### `ONEDRIVE_SHAREPOINT_TENANT_ID`
+
+-   类型: `str`
+-   默认值: `None`
+-   描述: 指定用于工作/学校集成的目录（租户）ID。这是从您针对企业级的 Azure 应用注册中获得的。
+-   持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+工作/学校集成需要此租户 ID（也称为目录 ID）。您可以在 Microsoft Entra ID 门户的 Azure 应用注册主概览页面上找到此值。
+
+:::
+
+## 网页搜索 (Web Search)
+
+#### `ENABLE_WEB_SEARCH`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用网页搜索切换开关。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_SEARCH_QUERY_GENERATION`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用搜索查询生成。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `WEB_SEARCH_TRUST_ENV`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 在网页搜索内容抓取期间，启用由 `http_proxy` 和 `https_proxy` 设置的代理。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `WEB_FETCH_FILTER_LIST`
+
+- 类型: `string` (逗号分隔列表)
+- 默认值: `""` (默认为空，但始终应用默认黑名单)
+- 描述: 为网页获取操作配置额外的 URL 过滤规则，以防止服务端请求伪造 (SSRF) 攻击。系统包含一个默认黑名单，用于保护对云元数据端点（AWS, Google Cloud, Azure, Alibaba Cloud）的访问。不带 `!` 前缀的条目被视为白名单（仅允许这些域名），而带有 `!` 前缀的条目被添加到黑名单（这些域名始终被拒绝）。默认黑名单包括 `!169.254.169.254`, `!fd00:ec2::254`, `!metadata.google.internal`, `!metadata.azure.com` 和 `!100.100.100.200`。自定义条目将与默认黑名单合并。
+
+:::info
+示例：
+
+阻止额外域名：`WEB_FETCH_FILTER_LIST="!internal.company.com,!192.168.1.1"`
+仅允许特定域名：`WEB_FETCH_FILTER_LIST="example.com,trusted-site.org"`
+:::
+
+#### `WEB_SEARCH_DOMAIN_FILTER_LIST`
+
+- 类型: `list` of `str`
+- 默认值: `[]`
+- 描述: 用于过滤网页搜索结果的域名逗号分隔列表。以前缀 `!` 开头的域名将被屏蔽；不带前缀的域名将创建一个白名单（仅允许这些域名）。
+- 示例: `wikipedia.org,github.com,!malicious-site.com`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `WEB_SEARCH_RESULT_COUNT`
+
+- 类型: `int`
+- 默认值: `3`
+- 描述: 抓取的最大搜索结果数量。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `WEB_SEARCH_CONCURRENT_REQUESTS`
+
+- 类型: `int`
+- 默认值: `0`
+- 描述: 限制对搜索引擎提供商的并发搜索请求数量。设置为 `0` 表示不限制并发（默认）。设置为 `1` 表示串行执行，以防止速率限制错误（例如：Brave 免费版）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `WEB_LOADER_CONCURRENT_REQUESTS`
+
+- 类型: `int`
+- 默认值: `10`
+- 描述: 指定网页加载器用于从搜索结果返回的网页中获取内容的并发请求数。这直接影响同时能抓取的页面数量。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+`WEB_LOADER_CONCURRENT_REQUESTS` 以前名为 `WEB_SEARCH_CONCURRENT_REQUESTS`。变量 `WEB_SEARCH_CONCURRENT_REQUESTS` 已被重新用于控制搜索引擎请求的并发（见上文）。要控制网页 *loader* 的并发（从结果中获取内容），您**必须**使用 `WEB_LOADER_CONCURRENT_REQUESTS`。
+
+:::
+
+#### `WEB_SEARCH_ENGINE`
+
+- 类型: `str`
+- 可选项:
+  - `searxng` - 使用 [SearXNG](https://github.com/searxng/searxng) 搜索引擎。
+  - `google_pse` - 使用 [Google 可编程搜索引擎 (PSE)](https://programmablesearchengine.google.com/about/)。
+  - `brave` - 使用 [Brave 搜索引擎](https://brave.com/search/api/)。
+  - `kagi` - 使用 [Kagi](https://www.kagi.com/) 搜索引擎。
+  - `mojeek` - 使用 [Mojeek](https://www.mojeek.com/) 搜索引擎。
+  - `bocha` - 使用 Bocha 搜索引擎。
+  - `serpstack` - 使用 [Serpstack](https://serpstack.com/) 搜索引擎。
+  - `serper` - 使用 [Serper](https://serper.dev/) 搜索引擎。
+  - `serply` - 使用 [Serply](https://serply.io/) 搜索引擎。
+  - `searchapi` - 使用 [SearchAPI](https://www.searchapi.io/) 搜索引擎。
+  - `serpapi` - 使用 [SerpApi](https://serpapi.com/) 搜索引擎。
+  - `duckduckgo` - 使用 [DuckDuckGo](https://duckduckgo.com/) 搜索引擎。
+  - `tavily` - 使用 [Tavily](https://tavily.com/) 搜索引擎。
+  - `jina` - 使用 [Jina](https://jina.ai/) 搜索引擎。
+  - `bing` - 使用 [Bing](https://www.bing.com/) 搜索引擎。
+  - `exa` - 使用 [Exa](https://exa.ai/) 搜索引擎。
+  - `perplexity` - 使用 [Perplexity API](https://www.perplexity.ai/) 访问其 AI 模型。调用其 AI 模型，模型会执行搜索并返回完整响应。
+  - `perplexity_search` - 使用 [Perplexity Search API](https://www.perplexity.ai/) 搜索引擎。与 `perplexity` 选项不同，此选项使用 Perplexity 的网页搜索 API 进行全网搜索并检索结果。
+  - `sougou` - 使用 [搜狗](https://www.sogou.com/) 搜索引擎。
+  - `ollama_cloud` - 使用 [Ollama Cloud](https://ollama.com/blog/web-search) 搜索引擎。
+  - `azure_ai_search`
+  - `yacy`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 绕过网页搜索的嵌入和检索过程。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SEARXNG_QUERY_URL`
+
+- 类型: `str`
+- 描述: 支持 JSON 输出的 [SearXNG 搜索 API](https://docs.searxng.org/dev/search_api.html) URL。`<query>` 将被替换为搜索查询内容。示例：`http://searxng.local/search?q=<query>`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SEARXNG_LANGUAGE`
+
+- 类型: `str`
+- 默认值: `all`
+- 描述: 在对 SearXNG 的请求中用作“搜索语言”（参数 "language"）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `GOOGLE_PSE_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 Google 可编程搜索引擎 (PSE) 服务的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `GOOGLE_PSE_ENGINE_ID`
+
+- 类型: `str`
+- 描述: Google 可编程搜索引擎 (PSE) 服务的引擎 ID。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `BRAVE_SEARCH_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 Brave Search API 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `KAGI_SEARCH_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 Kagi Search API 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MOJEEK_SEARCH_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 Mojeek Search API 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SERPSTACK_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 Serpstack 搜索 API 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SERPSTACK_HTTPS`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 配置对 Serpstack 请求是否使用 HTTPS。免费版请求仅限于 HTTP。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SERPER_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 Serper 搜索 API 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SERPLY_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 Serply 搜索 API 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SEARCHAPI_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 SearchAPI 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SEARCHAPI_ENGINE`
+
+- 类型: `str`
+- 描述: 设置 SearchAPI 引擎。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `TAVILY_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 Tavily 搜索 API 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `JINA_API_KEY`
+
+- 类型: `str`
+- 描述: 设置 Jina 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `BING_SEARCH_V7_ENDPOINT`
+
+- 类型: `str`
+- 描述: 设置 Bing Search API 的端点。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `BING_SEARCH_V7_SUBSCRIPTION_KEY`
+
+- 类型: `str`
+- 默认值: `https://api.bing.microsoft.com/v7.0/search`
+- 描述: 设置 Bing Search API 的订阅密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `BOCHA_SEARCH_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置 Bocha 搜索 API 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `EXA_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置 Exa 搜索 API 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SERPAPI_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置 SerpAPI 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SERPAPI_ENGINE`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定用于 SerpAPI 的搜索引擎。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AZURE_AI_SEARCH_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 用于 Azure AI Search 服务身份验证的 API 密钥（查询密钥或管理员密钥）。使用 Azure AI Search 作为网页搜索提供商时必填。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AZURE_AI_SEARCH_ENDPOINT`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: Azure Search 服务端点 URL。指定要连接的 Azure Search 服务实例。
+- 示例: `https://myservice.search.windows.net`, `https://company-search.search.windows.net`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AZURE_AI_SEARCH_INDEX_NAME`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 在 Azure Search 服务中要查询的搜索索引名称。不同的索引可以包含不同类型的可搜索内容。
+- 示例: `my-search-index`, `documents-index`, `knowledge-base`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SOUGOU_API_SID`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置搜狗 API SID。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SOUGOU_API_SK`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置搜狗 API SK。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OLLAMA_CLOUD_WEB_SEARCH_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置 Ollama Cloud Web Search API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `TAVILY_EXTRACT_DEPTH`
+
+- 类型: `str`
+- 默认值: `basic`
+- 描述: 指定 Tavily 搜索结果的提取深度。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `YACY_QUERY_URL`
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 为 YaCy 搜索引擎集成设置查询 URL。应指向某个 YaCy 实例的搜索 API 端点。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `YACY_USERNAME`
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 指定用于 YaCy 搜索引擎身份验证的用户名。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `YACY_PASSWORD`
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 指定用于 YaCy 搜索引擎身份验证的密码。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `EXTERNAL_WEB_SEARCH_URL`
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 为自定义搜索集成指定外部网页搜索服务 API 端点的 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `EXTERNAL_WEB_SEARCH_API_KEY`
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 设置用于外部网页搜索服务身份验证的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `EXTERNAL_WEB_LOADER_URL`
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 指定用于获取和处理网页的外部网页内容加载器服务 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `EXTERNAL_WEB_LOADER_API_KEY`
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 设置用于外部网页加载器服务身份验证的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `PERPLEXITY_API_KEY`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 设置 Perplexity API 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `PERPLEXITY_SEARCH_API_URL`
+
+- 类型: `str`
+- 默认值: `https://api.perplexity.ai/search`
+- 描述: 配置 Perplexity Search 的 API 端点。允许使用自定义或自托管的 Perplexity 兼容 API 端点（例如 LiteLLM 的 `/search` 端点），而不是官方 Perplexity API 的硬编码默认值。这使得将搜索请求路由到其他提供商或内部代理变得灵活。**注意：如果使用 LiteLLM，请在 URL 路径后附上具体的提供商名称。**
+- 示例: `http://my-litellm-server.com/search/perplexity-search`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `PERPLEXITY_MODEL`
+
+- 类型: `str`
+- 默认值: `sonar`
+- 描述: 指定在使用 `Perplexity` 作为网页搜索引擎时，用于搜索查询的 Perplexity AI 模型。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+`Perplexity` 与 `perplexity_search` 不同。
+如果您使用 `perplexity_search`，此变量与您无关。
+
+:::
+
+#### `PERPLEXITY_SEARCH_CONTEXT_USAGE`
+
+- 类型: `str`
+- 默认值: `medium`
+- 描述: 控制 Perplexity AI 使用的搜索上下文量。选项通常 include `low`, `medium`, `high`。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+`Perplexity` 与 `perplexity_search` 不同。
+如果您使用 `perplexity`，此变量与您无关。
+
+:::
+
+### 网页加载器配置 (Web Loader Configuration)
+
+#### `WEB_LOADER_ENGINE`
+
+- 类型: `str`
+- 默认值: `(空)`
+- 描述: 指定用于检索和处理网页内容的加载器。
+- 可选项:
+  - `safe_web` (默认) - 使用具有增强错误处理能力的内部获取方式。
+  - `playwright` - 使用 Playwright 进行支持 JavaScript 的页面渲染。
+  - `firecrawl` - 使用 Firecrawl 服务。
+  - `tavily` - 使用 Tavily 服务。
+  - `external` - 使用外部网页加载器 API。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+使用 `playwright` 时，您有两个选择：
+
+1. 如果未设置 `PLAYWRIGHT_WS_URI`，Playwright 及其 Chromium 依赖项将在启动时自动安装到 Open WebUI 容器中。
+2. 如果设置了 `PLAYWRIGHT_WS_URI`，Open WebUI 将连接到远程浏览器实例，而不在本地安装依赖。
+
+:::
+
+#### `PLAYWRIGHT_WS_URL`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定远程 Playwright 浏览器实例的 WebSocket URI。设置后，Open WebUI 将使用此远程浏览器，而不在本地安装浏览器依赖项。这在容器化环境中非常有用，可以保持 Open WebUI 容器轻量化，并将浏览器事务分离。示例：`ws://playwright:3000`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::tip
+
+通过 `PLAYWRIGHT_WS_URL` 使用远程 Playwright 浏览器的好处包括：
+
+- 减小 Open WebUI 容器的大小
+- 使用默认 Chromium 之外的其他浏览器
+- 连接到非无头 (GUI) 浏览器
+
+:::
+
+#### `FIRECRAWL_API_BASE_URL`
+
+- 类型: `str`
+- 默认值: `https://api.firecrawl.dev`
+- 描述: 设置 Firecrawl API 的基础 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `FIRECRAWL_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置 Firecrawl API 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `PLAYWRIGHT_TIMEOUT`
+
+- 类型: `int`
+- 默认值: 空字符串 (' ')，因为默认设置为 `None`。
+- 描述: 指定 Playwright 请求的超时时间。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `WEB_LOADER_TIMEOUT`
+
+- 类型: `float`
+- 默认值: 空字符串 (' ')，因为默认设置为 `None`。
+- 描述: 指定 SafeWebBaseLoader 在抓取网页时的请求超时秒数。如果不设置，网页抓取操作可能会在缓慢或无响应的页面上无限期挂起。建议根据您的网络状况设置 10–30 秒。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::warning
+
+此**超时仅在 `WEB_LOADER_ENGINE` 设置为 `safe_web`** 或留空（默认值）时生效。对于 Playwright 或 Firecrawl 加载器引擎无效，它们有各自的超时配置（分别是 `PLAYWRIGHT_TIMEOUT` 和 Firecrawl 的内部设置）。
+
+:::
+
+### YouTube 加载器
+
+#### `YOUTUBE_LOADER_PROXY_URL`
+
+- 类型: `str`
+- 描述: 设置 YouTube 加载器的代理 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `YOUTUBE_LOADER_LANGUAGE`
+
+- 类型: `str`
+- 默认值: `en`
+- 描述: 逗号分隔的语言代码列表，按优先级排序，用于获取 YouTube 视频字幕。
+- 示例: 如果设置为 `es,de`，系统将首先尝试西班牙语字幕，如果不可用则尝试德语，最后尝试英语。
+
+:::note
+
+注意：如果指定的语言都不可用，且 `en` 不在列表中，系统将自动尝试英语作为最终备选。
+
+:::
+
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+## 音频 (Audio)
+
+### Whisper 语音转文本 (本地)
+
+#### `WHISPER_MODEL`
+
+- 类型: `str`
+- 默认值: `base`
+- 描述: 设置用于语音转文本 (STT) 的 Whisper 模型。后端使用的是 `faster_whisper`，量化级别为 `int8`。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `WHISPER_MODEL_DIR`
+
+- 类型: `str`
+- 默认值: `${DATA_DIR}/cache/whisper/models`
+- 描述: 指定存储 Whisper 模型文件的目录。
+
+#### `WHISPER_VAD_FILTER`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 指定是否对 Whisper STT 应用语音活动检测 (VAD) 过滤器。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `WHISPER_MODEL_AUTO_UPDATE`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 切换是否自动更新 Whisper 模型。
+
+#### `WHISPER_LANGUAGE`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定 Whisper 用于 STT 的 ISO 639-1 语言代码（夏威夷语和粤语使用 ISO 639-2）。默认情况下 Whisper 会自动预测语言。
+
+### 语音转文本 (OpenAI)
+
+#### `AUDIO_STT_ENGINE`
+
+- 类型: `str`
+- 可选项:
+  - 留空表示使用内置的本地 Whisper 引擎。
+  - `openai` - 使用 OpenAI 引擎。
+  - `deepgram` - 使用 Deepgram 引擎。
+  - `azure` - 使用 Azure 引擎。
+- 描述: 指定要使用的语音转文本 (STT) 引擎。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUDIO_STT_MODEL`
+
+- 类型: `str`
+- 默认值: `whisper-1`
+- 描述: 指定 OpenAI 兼容端点所使用的 STT 模型。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUDIO_STT_OPENAI_API_BASE_URL`
+
+- 类型: `str`
+- 默认值: `${OPENAI_API_BASE_URL}`
+- 描述: 设置用于 STT 的 OpenAI 兼容基础 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUDIO_STT_OPENAI_API_KEY`
+
+- 类型: `str`
+- 默认值: `${OPENAI_API_KEY}`
+- 描述: 设置用于 STT 的 OpenAI API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 语音转文本 (Azure)
+
+#### `AUDIO_STT_AZURE_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定用于 STT 的 Azure API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUDIO_STT_AZURE_REGION`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定用于 STT 的 Azure 区域。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUDIO_STT_AZURE_LOCALES`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定用于 Azure STT 的区域设置 (locales)。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 语音转文本 (Deepgram)
+
+#### `DEEPGRAM_API_KEY`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定用于 STT 的 Deepgram API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 文本转语音 (Text-to-Speech)
+
+#### `AUDIO_TTS_API_KEY`
+
+- 类型: `str`
+- 描述: 设置用于文本转语音 (TTS) 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUDIO_TTS_ENGINE`
+
+- 类型: `str`
+- 可选项:
+  - 留空表示使用内置的 WebAPI 引擎。
+  - `azure` - 使用 Azure 引擎。
+  - `elevenlabs` - 使用 ElevenLabs 引擎。
+  - `openai` - 使用 OpenAI 引擎。
+  - `transformers` - 使用 SentenceTransformers 进行 TTS。
+- 描述: 指定要使用的文本转语音引擎。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUDIO_TTS_MODEL`
+
+- 类型: `str`
+- 默认值: `tts-1`
+- 描述: 指定要使用的 OpenAI TTS 模型。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUDIO_TTS_VOICE`
+
+- 类型: `str`
+- 默认值: `alloy`
+- 描述: 设置要使用的 OpenAI TTS 声音。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUDIO_TTS_SPLIT_ON`
+
+- 类型: `str`
+- 默认值: `punctuation`
+- 描述: 设置 OpenAI TTS 的分割方式。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### Azure 文本转语音
+
+#### `AUDIO_TTS_AZURE_SPEECH_REGION`
+
+- 类型: `str`
+- 描述: 设置 Azure TTS 的区域。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUDIO_TTS_AZURE_SPEECH_OUTPUT_FORMAT`
+
+- 类型: `str`
+- 描述: 设置 Azure TTS 的输出格式。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 语音模式 (Voice Mode)
+
+#### `VOICE_MODE_PROMPT_TEMPLATE`
+- 类型: `str`
+- 默认值: 环境变量 `DEFAULT_VOICE_MODE_PROMPT_TEMPLATE` 的值。
+- 描述: 为语音模式交互配置自定义系统提示词。允许管理员控制 AI 在语音对话中的表现（风格、长度、语调）。留空以使用针对语音对话优化的默认提示词，或提供自定义指令以调整语音助手的行为。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### OpenAI 文本转语音
+
+#### `AUDIO_TTS_OPENAI_API_BASE_URL`
+
+- 类型: `str`
+- 默认值: `${OPENAI_API_BASE_URL}`
+- 描述: 设置用于 TTS 的 OpenAI 兼容基础 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUDIO_TTS_OPENAI_API_KEY`
+
+- 类型: `str`
+- 默认值: `${OPENAI_API_KEY}`
+- 描述: 设置用于 TTS 的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### Elevenlabs 文本转语音
+
+#### `ELEVENLABS_API_BASE_URL`
+
+- 类型: `str`
+- 默认值: `https://api.elevenlabs.io`
+- 描述: 配置自定义的 ElevenLabs API 端点，支持欧盟数据存储 API 要求及其他区域性部署。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+## 图像生成 (Image Generation)
+
+### 通用设置
+
+#### `ENABLE_IMAGE_GENERATION`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用图像生成功能。
+- 持久性: 此环境变量是一个 `PersistentConfig` abolished 变量。
+
+#### `ENABLE_IMAGE_PROMPT_GENERATION`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用自动增强用户提示词，以获得更好的图像生成效果。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `IMAGE_PROMPT_GENERATION_PROMPT_TEMPLATE`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定生成图像提示词所用的模板。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+`DEFAULT_IMAGE_PROMPT_GENERATION_PROMPT_TEMPLATE`:
+```
+### 任务:
+根据给定的语言和上下文，为图像生成任务生成详细的提示词。像是在向一个看不见图像的人解释一样描述图像。包含相关的细节、颜色、形状以及任何其他重要的元素。
+
+### 准则:
+- 具有描述性和详细性，专注于图像最重要的方面。
+- 避免做出假设或添加图像中不存在的信息。
+- 使用聊天的主要语言；多语言环境下默认为英语。
+- 如果图像过于复杂，请关注最突出的元素。
+
+### 输出:
+严格返回 JSON 格式：
+{
+    "prompt": "在此处填写您的详细描述。"
+}
+
+### 聊天记录:
+<chat_history>
+{{MESSAGES:END:6}}
+</chat_history>
+```
+
+---
+
+### 图像创建
+
+#### `IMAGE_GENERATION_ENGINE`
+
+- 类型: `str`
+- 可选项:
+  - `openai` - 使用 OpenAI DALL-E。
+  - `comfyui` - 使用 ComfyUI 引擎。
+  - `automatic1111` - 使用 AUTOMATIC1111 引擎。
+  - `gemini` - 使用 Gemini。
+- 默认值: `openai`
+- 描述: 指定用于生成图像的引擎。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `IMAGE_GENERATION_MODEL`
+
+- 类型: `str`
+- 默认值: ``
+- 描述: 图像生成的默认模型（例如 `dall-e-3`, `gemini-2.0-flash-exp`）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `IMAGE_SIZE`
+
+- 类型: `str`
+- 默认值: `512x512`
+- 描述: 设置生成图像的默认输出尺寸，格式为 宽度x高度（例如 `1024x1024`）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `IMAGE_STEPS`
+
+- 类型: `int`
+- 默认值: `50`
+- 描述: 设置图像生成的默认迭代步数。用于 ComfyUI 和 AUTOMATIC1111 引擎。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+---
+
+### 图像编辑
+
+#### `ENABLE_IMAGE_EDIT`
+
+- 类型: `boolean`
+- 默认值: `true`
+- 描述: 禁用后，将不再使用“图像编辑”功能，图像将仅由图像生成引擎创建。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `IMAGE_EDIT_ENGINE`
+
+- 类型: `str`
+- 可选项:
+  - `openai` - 使用 OpenAI DALL-E 进图像编辑。
+  - `gemini` - 使用 Gemini 进行图像编辑。
+  - `comfyui` - 使用 ComfyUI 引擎进行图像编辑。
+- 默认值: `openai`
+- 描述: 配置用于图像编辑操作的引擎，允许通过文本提示词修改现有图像。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `IMAGE_EDIT_MODEL`
+
+- 类型: `str`
+- 默认值: ``
+- 描述: 指定在所选引擎中用于图像编辑操作的模型（例如 `dall-e-2`, `gemini-1.5-flash`）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `IMAGE_EDIT_SIZE`
+
+- 类型: `str`
+- 默认值: ``
+- 描述: 定义编辑后图像的输出尺寸，格式为 宽度x高度（例如 `1024x1024`）。留空则保留原始尺寸。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+---
+
+### OpenAI DALL-E
+
+#### 图像生成
+
+##### `IMAGES_OPENAI_API_BASE_URL`
+
+- 类型: `str`
+- 默认值: `${OPENAI_API_BASE_URL}`
+- 描述: 设置用于 DALL-E 图像生成的 OpenAI 兼容基础 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `IMAGES_OPENAI_API_VERSION`
+
+- 类型: `str`
+- 默认值: `${OPENAI_API_VERSION}`
+- 描述: 可选设置。如果提供，它将在调用图像生成端点时设置 `api-version` 查询参数。Azure OpenAI 部署需要此项。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `IMAGES_OPENAI_API_KEY`
+
+- 类型: `str`
+- 默认值: `${OPENAI_API_KEY}`
+- 描述: 设置用于 DALL-E 图像生成的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `IMAGES_OPENAI_API_PARAMS`
+
+- 类型: `str` (JSON)
+- 默认值: `{}`
+- 描述: 以 JSON 格式设置 OpenAI 图像生成 API 的附加参数。允许自定义 API 特定的设置，例如 DALL-E 模型的高级参数（例如：针对 `dall-e-3` 的 `{"quality": "hd"}`）。
+- 示例: `{"quality": "hd", "style": "vivid"}`
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### 图像编辑
+
+##### `IMAGES_EDIT_OPENAI_API_BASE_URL`
+
+- 类型: `str`
+- 默认值: `${OPENAI_API_BASE_URL}`
+- 描述: 专门为图像编辑操作配置 OpenAI API 基础 URL，允许与图像生成使用不同的端点。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `IMAGES_EDIT_OPENAI_API_VERSION`
+
+- 类型: `str`
+- 默认值: ``
+- 描述: 指定用于图像编辑的 OpenAI API 版本，支持具有版本化端点的 Azure OpenAI 部署。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `IMAGES_EDIT_OPENAI_API_KEY`
+
+- 类型: `str`
+- 默认值: `${OPENAI_API_KEY}`
+- 描述: 为 OpenAI 图像编辑 API 请求提供身份验证，支持与图像生成使用不同的密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+---
+
+### Gemini
+
+:::tip
+
+Gemini 的一个极简工作配置示例如下：
+
+- **创建图像**
+  - 模型：`gemini-2.5-flash-image`
+  - 图像尺寸：`2816x1536`
+  - 图像提示词生成：开启
+  - 图像生成引擎：`Gemini`
+  - Gemini 基础 URL：`https://generativelanguage.googleapis.com/v1beta`
+  - Gemini API 密钥：输入您的 API 密钥
+  - Gemini 端点方法：`generateContent`
+- **编辑图像**
+  - 图像编辑引擎：`Gemini`
+  - 模型：`gemini-2.5-flash-image`
+  - 图像尺寸：（可留空）
+  - Gemini 基础 URL：`https://generativelanguage.googleapis.com/v1beta`
+  - Gemini API 密钥：输入您的 API 密钥
+
+:::
+
+#### 图像生成
+
+##### `IMAGES_GEMINI_API_BASE_URL`
+
+- 类型: `str`
+- 默认值: `${GEMINI_API_BASE_URL}`
+- 描述: 指定 Gemini 图像生成 API 的 URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `IMAGES_GEMINI_API_KEY`
+
+- 类型: `str`
+- 默认值: `${GEMINI_API_KEY}`
+- 描述: 设置图像生成的 Gemini API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `IMAGES_GEMINI_ENDPOINT_METHOD`
+
+- 类型: `str`
+- 可选项:
+  - `predict` - 使用 predict 端点（Imagen 模型默认）。
+  - `generateContent` - 使用 generateContent 端点（适用于 Gemini 1.5 Flash 及更新模型）。
+- 默认值: ``
+- 描述: 指定图像生成的 Gemini API 端点方法，支持旧版 Imagen 模型和具有图像生成能力的新版 Gemini 模型。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### 图像编辑
+
+##### `IMAGES_EDIT_GEMINI_API_BASE_URL`
+
+- 类型: `str`
+- 默认值: `${GEMINI_API_BASE_URL}`
+- 描述: 配置使用 Gemini 模型进行图像编辑操作的 base URL。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `IMAGES_EDIT_GEMINI_API_KEY`
+
+- 类型: `str`
+- 默认值: `${GEMINI_API_KEY}`
+- 描述: 为 Gemini 图像编辑 API 请求提供身份验证。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+---
+
+### ComfyUI
+
+#### 图像生成
+
+##### `COMFYUI_BASE_URL`
+
+- 类型: `str`
+- 默认值: ``
+- 描述: 指定 ComfyUI 图像生成 API 的 URL（例如 `http://127.0.0.1:8188`）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `COMFYUI_API_KEY`
+
+- 类型: `str`
+- 默认值: ``
+- 描述: 设置用于 ComfyUI 身份验证的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `COMFYUI_WORKFLOW`
+
+- 类型: `str` (JSON)
+- 默认值:
+```json
+{
+  "3": {
+    "inputs": {
+      "seed": 0,
+      "steps": 20,
+      "cfg": 8,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": ["4", 0],
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "latent_image": ["5", 0]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "4": {
+    "inputs": {
+      "ckpt_name": "model.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 512,
+      "height": 512,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": "Prompt",
+      "clip": ["4", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "",
+      "clip": ["4", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": ["3", 0],
+      "vae": ["4", 2]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "9": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": ["8", 0]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  }
+}
+```
+
+- 描述: 以 JSON 格式定义 ComfyUI 工作流配置。应从 ComfyUI 中使用 "Save (API Format)" 导出以确保兼容性。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `COMFYUI_WORKFLOW_NODES`
+
+- 类型: `list[dict]`
+- 默认值: `[]`
+- 描述: 指定用于图像生成的 ComfyUI 工作流节点映射，定义哪些节点处理提示词、模型、尺寸及其他参数。可通过管理界面自动配置。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### 图像编辑
+
+##### `IMAGES_EDIT_COMFYUI_BASE_URL`
+
+- 类型: `str`
+- 默认值: ``
+- 描述: 配置图像编辑操作的 ComfyUI 基础 URL，支持用于图像处理的自托管 ComfyUI 工作流。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `IMAGES_EDIT_COMFYUI_API_KEY`
+
+- 类型: `str`
+- 默认值: ``
+- 描述: 当 ComfyUI 实例需要 API 密钥验证时，为 ComfyUI 图像编辑 API 请求提供身份验证。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `IMAGES_EDIT_COMFYUI_WORKFLOW`
+
+- 类型: `str` (JSON)
+- 默认值: ``
+- 描述: 以 JSON 格式定义用于图像编辑的 ComfyUI 工作流配置。必须包含图像输入、提示词和输出节点。应从 ComfyUI 中使用 "Save (API Format)" 导出。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+##### `IMAGES_EDIT_COMFYUI_WORKFLOW_NODES`
+
+- 类型: `list[dict]`
+- 默认值: `[]`
+- 描述: 指定用于图像编辑的 ComfyUI 工作流节点映射，定义哪些节点处理图像输入、提示词、模型、尺寸及其他参数。通过管理界面自动配置。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+---
+
+### AUTOMATIC1111
+
+#### `AUTOMATIC1111_BASE_URL`
+
+- 类型: `str`
+- 默认值: ``
+- 描述: 指定 AUTOMATIC1111 的 Stable Diffusion API URL（例如 `http://127.0.0.1:7860`）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUTOMATIC1111_API_AUTH`
+
+- 类型: `str`
+- 默认值: ``
+- 描述: 如果需要，设置 AUTOMATIC1111 API 身份验证凭据。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `AUTOMATIC1111_PARAMS`
+
+- 类型: `str` (JSON)
+- 默认值: `{}`
+- 描述: 以 JSON 格式传递给 AUTOMATIC1111 API 请求的附加参数（例如 `{"cfg_scale": 7, "sampler_name": "Euler a", "scheduler": "normal"}`）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+## OAuth
+
+:::info
+
+您一次只能配置一个 OAuth 提供商。不能同时配置两个或多个 OAuth 提供商。
+
+:::
+
+#### `ENABLE_OAUTH_SIGNUP`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用通过 OAuth 注册时创建帐户。与 `ENABLE_SIGNUP` 分开。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::danger
+
+当 `ENABLE_OAUTH_SIGNUP` 设置为 `True` 时，`ENABLE_LOGIN_FORM` 必须设置为 `False`。否则将导致无法登录。
+
+:::
+
+#### `ENABLE_OAUTH_PERSISTENT_CONFIG`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 控制 OAuth 相关设置在首次启动后是否保留在数据库中。
+
+:::info
+
+默认情况下，OAuth 配置存储在数据库中，并在初始设置后通过管理面板进行管理。将此变量设置为 `False` 以强制 Open WebUI 在每次重启时**始终**从环境变量中读取 OAuth 设置。这非常适合使用 GitOps 或不可变基础设施的环境，在这些环境中配置完全通过外部文件（如 Docker Compose, Kubernetes ConfigMaps）进行管理。
+
+:::
+
+#### `OAUTH_SUB_CLAIM`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 覆盖用于从 OAuth/OIDC 提供者的用户信息响应中识别用户唯一 ID (`sub`) 的默认声明。默认情况下，Open WebUI 会尝试从提供者的配置中推断。此变量允许您明确指定使用哪个声明。例如，如果您的身份提供者使用 'employee_id' 作为唯一标识符，您可以将此变量设置为 'employee_id'。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_MERGE_ACCOUNTS_BY_EMAIL`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 如果启用，将具有相同电子邮件地址的 OAuth 帐户与现有帐户合并。这被认为是不安全的，因为并非所有 OAuth 提供者都会验证电子邮件地址，这可能会导致潜在的帐号接管。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_OAUTH_WITHOUT_EMAIL`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用与不支持或不公开 `email` 作用域 (scope) 的 OpenID Connect (OIDC) 提供商的身份验证。启用后，Open WebUI 将在不需要 OAuth 提供商提供电子邮件地址的情况下创建和管理用户帐户。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::warning
+
+**请谨慎使用**
+
+启用此选项将绕过基于电子邮件的用户识别，这是跨身份验证系统唯一识别用户的标准方法。启用后：
+
+- 用户帐户将使用 `sub` 声明（或 `OAUTH_SUB_CLAIM` 中指定的声明）作为主要标识符进行创建
+- 基于电子邮件的功能，如密码恢复、电子邮件通知以及通过 `OAUTH_MERGE_ACCOUNTS_BY_EMAIL` 进行的帐户合并将无法正常运行
+- 确保您的 OIDC 提供商的 `sub` 声明是稳定且唯一的，以防止身份验证冲突
+
+仅当您的身份提供商不支持 `email` 作用域且您已有替代的用户识别机制时，才启用此功能。
+
+此设置专为使用以下身份提供商的企业环境而设计：
+- 使用员工 ID、用户名或其他非电子邮件标识符作为主要用户声明
+- 具有防止通过 OAuth 共享电子邮件地址的隐私政策
+- 在无法使用基于电子邮件服务的物理隔离 (air-gapped) 或高度受限的网络中运行
+
+对于大多数标准 OAuth 提供商（Google、Microsoft、GitHub 等），此设置应保持为 `False`。
+
+:::
+
+#### `OAUTH_UPDATE_PICTURE_ON_LOGIN`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 如果启用，在登录时使用 OAuth 提供的照片更新本地用户个人资料照片。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+如果通过将 `OAUTH_PICTURE_CLAIM` 设置为 `''`（空字符串）禁用了 OAuth 照片声明，那么将此变量设置为 `true` 也不会更新用户个人资料照片。
+
+:::
+
+#### `ENABLE_OAUTH_ID_TOKEN_COOKIE`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 控制在 OAuth 登录成功后，是否在浏览器中设置**旧版**的 `oauth_id_token` cookie（不安全，不建议使用，token 可能会过期/孤立）。提供此选项是为了与可能依赖于抓取此 cookie 的自定义工具或旧版本保持**向后兼容**。**新的推荐方法是使用服务器端会话管理。**
+- 使用建议: 对于新的且安全的部署，**建议将此设置为 `False`** 以最大限度地减少暴露给客户端的信息。仅当您的集成依赖于旧的基于 cookie 的方法时，才将其保持为 `True`。
+
+#### `OAUTH_CLIENT_INFO_ENCRYPTION_KEY`
+
+- 类型: `str`
+- 默认值: 回退到 `WEBUI_SECRET_KEY` 的值。
+- 描述: 指定用于加密和解密存储在数据库服务器端的 OAuth 客户端令牌的密钥。这是 OAuth 客户端令牌的一个关键安全组件。如果未设置，默认使用主 `WEBUI_SECRET_KEY`，但强烈建议在生产环境中将其设置为唯一的、安全生成的随机值。`OAUTH_CLIENT_INFO_ENCRYPTION_KEY` 与 OAuth 2.1 MCP 服务器身份验证结合使用。
+
+#### `OAUTH_SESSION_TOKEN_ENCRYPTION_KEY`
+
+- 类型: `str`
+- 默认值: 回退到 `WEBUI_SECRET_KEY` 的值。
+- 描述: 指定用于加密和解密存储在数据库服务器端的 OAuth 令牌的密钥。这是保护用户静态凭据的关键安全组件。如果未设置，默认使用主 `WEBUI_SECRET_KEY`，但强烈建议在生产环境中将其设置为唯一的、安全生成的随机值。
+
+:::warning
+
+**多副本部署必填**
+在任何运行多个 Open WebUI 实例的生产环境（如 Docker Swarm, Kubernetes）中，此变量**必须**显式设置为一个持久的、共享的密钥。如果未设置，每个副本可能会生成或使用不同的密钥，导致在用户请求跨实例负载均衡时，间歇性地出现会话解密失败。
+
+:::
+
+#### `WEBUI_AUTH_TRUSTED_EMAIL_HEADER`
+
+- 类型: `str`
+- 描述: 定义身份验证的可信请求头。参见 [SSO 文档](/features/auth/sso)。
+
+#### `WEBUI_AUTH_TRUSTED_NAME_HEADER`
+
+- 类型: `str`
+- 描述: 定义使用 `WEBUI_AUTH_TRUSTED_EMAIL_HEADER` 标头进行注册的任何用户的可信请求头（用于获取用户名）。参见 [SSO 文档](/features/auth/sso)。
+
+#### `WEBUI_AUTH_TRUSTED_GROUPS_HEADER`
+
+- 类型: `str`
+- 描述: 定义使用可信标头身份验证时，包含用户所属组列表（逗号分隔）的可信请求头。参见 [SSO 文档](/features/auth/sso)。
+
+### Google
+
+参见 https://support.google.com/cloud/answer/6158849?hl=en
+
+:::info
+
+您还必须设置 `OPENID_PROVIDER_URL`，否则注销功能可能无法正常工作。
+
+:::
+
+#### `GOOGLE_CLIENT_ID`
+
+- 类型: `str`
+- 描述: 设置 Google OAuth 的客户端 ID。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `GOOGLE_CLIENT_SECRET`
+
+- 类型: `str`
+- 描述: 设置 Google OAuth 的客户端密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `GOOGLE_OAUTH_SCOPE`
+
+- 类型: `str`
+- 默认值: `openid email profile`
+- 描述: 设置 Google OAuth 身份验证的作用域 (scope)。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `GOOGLE_REDIRECT_URI`
+
+- 类型: `str`
+- 默认值: `<backend>/oauth/google/callback`
+- 描述: 设置 Google OAuth 的重定向 URI。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### Microsoft
+
+参见 https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app
+
+:::info
+
+您还必须设置 `OPENID_PROVIDER_URL`，否则注销功能可能无法正常工作。
+
+:::
+
+#### `MICROSOFT_CLIENT_ID`
+
+- 类型: `str`
+- 描述: 设置 Microsoft OAuth 的客户端 ID。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MICROSOFT_CLIENT_SECRET`
+
+- 类型: `str`
+- 描述: 设置 Microsoft OAuth 的客户端密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MICROSOFT_CLIENT_TENANT_ID`
+
+- 类型: `str`
+- 描述: 设置 Microsoft OAuth 的租户 ID。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MICROSOFT_OAUTH_SCOPE`
+
+- 类型: `str`
+- 默认值: `openid email profile`
+- 描述: 设置 Microsoft OAuth 身份验证的作用域。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MICROSOFT_REDIRECT_URI`
+
+- 类型: `str`
+- 默认值: `<backend>/oauth/microsoft/callback`
+- 描述: 设置 Microsoft OAuth 的重定向 URI。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MICROSOFT_CLIENT_LOGIN_BASE_URL`
+
+- 类型: `str`
+- 默认值: `https://login.microsoftonline.com`
+- 描述: 设置 Microsoft OAuth 身份验证的基础登录 URL。允许为政府云或自定义部署配置替代的登录端点。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `MICROSOFT_CLIENT_PICTURE_URL`
+
+- 类型: `str`
+- 默认值: `https://graph.microsoft.com/v1.0/me/photo/$value`
+- 描述: 指定用于在 OAuth 身份验证期间检索用户个人资料照片的 Microsoft Graph API 端点。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### GitHub
+
+参见 https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+
+:::info
+
+您还必须设置 `OPENID_PROVIDER_URL`，否则注销功能可能无法正常工作。
+
+:::
+
+#### `GITHUB_CLIENT_ID`
+
+- 类型: `str`
+- 描述: 设置 GitHub OAuth 的客户端 ID。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `GITHUB_CLIENT_SECRET`
+
+- 类型: `str`
+- 描述: 设置 GitHub OAuth 的客户端密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `GITHUB_CLIENT_SCOPE`
+
+- 类型: `str`
+- 默认值: `user:email`
+- 描述: 指定 GitHub OAuth 身份验证的作用域。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `GITHUB_CLIENT_REDIRECT_URI`
+
+- 类型: `str`
+- 默认值: `<backend>/oauth/github/callback`
+- 描述: 设置 GitHub OAuth 的重定向 URI。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 飞书 (Feishu)
+
+参见 https://open.feishu.cn/document/sso/web-application-sso/login-overview
+
+#### `FEISHU_CLIENT_ID`
+
+- 类型: `str`
+- 描述: 设置飞书 OAuth 的客户端 ID。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `FEISHU_CLIENT_SECRET`
+
+- 类型: `str`
+- 描述: 设置飞书 OAuth 的客户端密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `FEISHU_CLIENT_SCOPE`
+
+- 类型: `str`
+- 默认值: `contact:user.base:readonly`
+- 描述: 指定飞书 OAuth 身份验证的作用域。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `FEISHU_CLIENT_REDIRECT_URI`
+
+- 类型: `str`
+- 描述: 设置飞书 OAuth 的重定向 URI。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### OpenID (OIDC)
+
+#### `OAUTH_CLIENT_ID`
+
+- 类型: `str`
+- 描述: 设置 OIDC 的客户端 ID。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_CLIENT_SECRET`
+
+- 类型: `str`
+- 描述: 设置 OIDC 的客户端密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OPENID_PROVIDER_URL`
+
+- 类型: `str`
+- 描述: `.well-known/openid-configuration` 端点的路径。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::danger
+
+必须配置环境变量 `OPENID_PROVIDER_URL`，否则注销功能对大多数提供商都无效。
+即使在使用 Microsoft、GitHub 或其他提供商时，您也**必须**设置 `OPENID_PROVIDER_URL` 环境变量。
+
+:::
+
+#### `OPENID_REDIRECT_URI`
+
+- 类型: `str`
+- 默认值: `<backend>/oauth/oidc/callback`
+- 描述: 设置 OIDC 的重定向 URI。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_SCOPES`
+
+- 类型: `str`
+- 默认值: `openid email profile`
+- 描述: 设置 OIDC 身份验证的作用域。`openid` 和 `email` 是必需的。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_CODE_CHALLENGE_METHOD`
+
+- 类型: `str`
+- 可选项:
+  - `S256` - 使用 SHA-256 对 `code_verifier` 进行哈希。
+- 默认值: 空字符串 (' ')，因为默认设置为 `None`。
+- 描述: 指定 OAuth 身份验证的代码挑战方法。当提供商要求使用 PKCE 时，请设置为 `S256`。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_PROVIDER_NAME`
+
+- 类型: `str`
+- 默认值: `SSO`
+- 描述: 设置 OIDC 提供商的显示名称。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_USERNAME_CLAIM`
+
+- 类型: `str`
+- 默认值: `name`
+- 描述: 设置 OpenID 的用户名声明 (claim)。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_EMAIL_CLAIM`
+
+- 类型: `str`
+- 默认值: `email`
+- 描述: 设置 OpenID 的电子邮件声明。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_PICTURE_CLAIM`
+
+- 类型: `str`
+- 默认值: `picture`
+- 描述: 设置 OpenID 的照片 (头像) 声明。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+如果 `OAUTH_PICTURE_CLAIM` 设置为 `''`（空字符串），那么 OAuth 照片声明将被禁用，用户个人资料照片将不会被保存。
+
+:::
+
+#### `OAUTH_GROUP_CLAIM`
+
+- 类型: `str`
+- 默认值: `groups`
+- 描述: 指定用于 OAuth 身份验证的组声明。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_OAUTH_ROLE_MANAGEMENT`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用 OAuth 委托的角色管理。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_OAUTH_GROUP_MANAGEMENT`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用 OAuth 组管理。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_OAUTH_GROUP_CREATION`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用后，OAuth 声明中存在但 Open WebUI 中不存在的组将被自动创建。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_BLOCKED_GROUPS`
+
+- 类型: `str`
+- 默认值: `[]`
+- 描述: JSON 数组格式的组名称，禁止这些组访问应用程序。属于这些组的用户即使拥有有效的 OAuth 凭据也将被拒绝访问。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_ROLES_CLAIM`
+
+- 类型: `str`
+- 默认值: `roles`
+- 描述: 设置要在 OIDC 令牌中查找的角色声明。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_ALLOWED_ROLES`
+
+- 类型: `str`
+- 默认值: `user,admin`
+- 描述: 设置允许访问平台的角色。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_ADMIN_ROLES`
+
+- 类型: `str`
+- 默认值: `admin`
+- 描述: 设置被视为管理员的角色。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_ROLES_SEPARATOR`
+
+- 类型: `str`
+- 默认值: `,`
+- 描述: 允许通过自定义角色分隔符来拆分 `OAUTH_*_ROLES` 变量。适用于包含逗号的 OAuth 角色；对于 LDAP 语法中指定的角色或其他角色名本身包含逗号的系统非常有用。如果该声明是一个字符串且包含此分隔符，它也将按此分隔符进行拆分。
+
+#### `OAUTH_GROUPS_SEPARATOR`
+
+- 类型: `str`
+- 默认值: `;`
+- 描述: 指定用于解析来自 OAuth 组声明的多个组名称的分隔符。当身份提供商将组成员身份作为分隔字符串而非数组返回时，将使用此分隔符。当集成的系统使用非标准分隔符，或者组名本身包含逗号时，此设置非常有用。
+
+#### `OAUTH_ALLOWED_DOMAINS`
+
+- 类型: `str`
+- 默认值: `*`
+- 描述: 指定允许进行 OAuth 身份验证的域名（例如："example1.com,example2.com"）。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `OAUTH_AUDIENCE`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 指定在登录期间传递给 OAuth 提供商授权端点的 audience 参数。某些提供商（如 Auth0 和 Ory）使用此值来确定返回的访问令牌类型——不带此参数，提供商通常返回不透明令牌，而带上此参数，它们会返回可以解码和验证的 JWT。此参数不属于授权端点的官方 OAuth/OIDC 规范，但被一些提供商广泛支持。
+
+:::info
+
+当您需要 JWT 访问令牌进行下游验证，或者您的 OAuth 提供商需要 audience 提示以便正确生成令牌时，这非常有用。对于 Auth0，这通常是您的 API 标识符（例如 `https://your-api.auth0.com/api/v2/`）。对于 Ory，请指定您要访问的资源服务器。
+
+:::
+
+## LDAP
+
+#### `ENABLE_LDAP`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用 LDAP 身份验证。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_SERVER_LABEL`
+
+- 类型: `str`
+- 描述: 设置 LDAP 服务器的标签。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_SERVER_HOST`
+
+- 类型: `str`
+- 默认值: `localhost`
+- 描述: 设置 LDAP 服务器的主机名。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_SERVER_PORT`
+
+- 类型: `int`
+- 默认值: `389`
+- 描述: 设置 LDAP 服务器的端口号。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_ATTRIBUTE_FOR_MAIL`
+
+- 类型: `str`
+- 描述: 设置在 LDAP 身份验证中用作电子邮件的属性。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_ATTRIBUTE_FOR_USERNAME`
+
+- 类型: `str`
+- 描述: 设置在 LDAP 身份验证中用作用户名的属性。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_APP_DN`
+
+- 类型: `str`
+- 描述: 设置 LDAP 应用程序的专有名称 (Distinguished Name, DN)。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_APP_PASSWORD`
+
+- 类型: `str`
+- 描述: 设置 LDAP 应用程序的密码。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_SEARCH_BASE`
+
+- 类型: `str`
+- 描述: 设置用于 LDAP 身份验证搜索的基础 DN。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_SEARCH_FILTER`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 设置用于 LDAP 搜索的单个过滤器。是 `LDAP_SEARCH_FILTERS` 的替代方案。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_SEARCH_FILTERS`
+
+- 类型: `str`
+- 描述: 设置用于 LDAP 搜索的过滤器。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_USE_TLS`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用 LDAP 连接的 TLS。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_CA_CERT_FILE`
+
+- 类型: `str`
+- 描述: 设置 LDAP CA 证书文件的路径。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_VALIDATE_CERT`
+
+- 类型: `bool`
+- 描述: 设置是否验证 LDAP CA 证书。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_CIPHERS`
+
+- 类型: `str`
+- 默认值: `ALL`
+- 描述: 设置用于 LDAP 连接的密码套件 (ciphers)。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_LDAP_GROUP_MANAGEMENT`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用组管理功能。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `ENABLE_LDAP_GROUP_CREATION`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 如果 LDAP 中的组在 Open WebUI 中不存在，它将被自动创建。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `LDAP_ATTRIBUTE_FOR_GROUPS`
+
+- 类型: `str`
+- 默认值: `memberOf`
+- 描述: 指定包含用户组成员身份的 LDAP 属性。对于 Active Directory 环境，`memberOf` 是用于此目的的标准属性。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+## SCIM
+
+#### `SCIM_ENABLED`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用 SCIM 2.0（跨域身份管理系统）支持，用于从 Okta、Azure AD 和 Google Workspace 等身份提供商自动配置用户和组。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `SCIM_TOKEN`
+
+- 类型: `str`
+- 默认值: `""`
+- 描述: 设置用于 SCIM 身份验证的 Bearer 令牌。身份提供商在发出 SCIM API 请求时必须提供此令牌。生成一个安全的随机令牌（例如使用 `openssl rand -base64 32`）并在 Open WebUI 和您的身份提供商中同时配置它。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+## 用户权限 (User Permissions)
+
+### 聊天权限
+
+#### `USER_PERMISSIONS_CHAT_CONTROLS`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 作为启用或禁用聊天界面中主要“控制 (Controls)”按钮和面板的总开关。**如果设置为 False，用户将看不到“控制”按钮，且下方的细粒度权限将不再生效**。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_VALVES`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 当 `USER_PERMISSIONS_CHAT_CONTROLS` 启用时，此设置专门控制聊天控制面板内“阀门 (Valves)”部分的可见性。
+
+#### `USER_PERMISSIONS_CHAT_SYSTEM_PROMPT`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 当 `USER_PERMISSIONS_CHAT_CONTROLS` 启用时，此设置专门控制聊天控制面板、文件夹以及用户设置中可自定义的“系统提示词 (System Prompt)”部分的可见性。
+
+#### `USER_PERMISSIONS_CHAT_PARAMS`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 当 `USER_PERMISSIONS_CHAT_CONTROLS` 启用时，此设置专门控制聊天控制面板内“高级参数 (Advanced Parameters)”部分的可见性。
+
+#### `USER_PERMISSIONS_CHAT_FILE_UPLOAD`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用用户在聊天中上传文件的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_DELETE`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用用户删除聊天的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_EDIT`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用用户编辑聊天的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_DELETE_MESSAGE`
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用用户删除聊天中单个消息的权限。这提供了独立于完整聊天删除的消息删除细粒度控制。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_CONTINUE_RESPONSE`
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用用户继续 AI 回复的权限。禁用后，用户无法使用“继续回复”按钮，这有助于防止通过操作回复延续而引发的潜在系统提示词泄露。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_REGENERATE_RESPONSE`
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用用户重新生成 AI 回复的权限。控制对标准重新生成按钮和引导式重新生成菜单的访问。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_RATE_RESPONSE`
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用用户使用点赞/点踩反馈系统对 AI 回复进行评分的权限。这控制了用于评估和收集反馈的回复评分功能。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_STT`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用用户在聊天中使用语音转文本 (STT) 的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_TTS`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用用户在聊天中使用文本转语音 (TTS) 的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_CALL`
+
+- 类型: `str`
+- 默认值: `True`
+- 描述: 启用或禁用用户在聊天中进行通话的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_MULTIPLE_MODELS`
+
+- 类型: `str`
+- 默认值: `True`
+- 描述: 启用或禁用用户在聊天中使用多个模型的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_TEMPORARY`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用或禁用用户创建临时聊天的权限。**注意：** 为了隐私，临时聊天会禁用后端文档解析。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_CHAT_TEMPORARY_ENFORCED`
+
+- 类型: `str`
+- 默认值: `False`
+- 描述: 启用或禁用对用户强制执行临时聊天。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+### 功能权限
+
+#### `USER_PERMISSIONS_FEATURES_DIRECT_TOOL_SERVERS`
+
+- 类型: `str`
+- 默认值: `False`
+- 描述: 启用或禁用用户访问直接工具服务器的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_FEATURES_WEB_SEARCH`
+
+- 类型: `str`
+- 默认值: `True`
+- 描述: 启用或禁用用户使用网页搜索功能的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_FEATURES_IMAGE_GENERATION`
+
+- 类型: `str`
+- 默认值: `True`
+- 描述: 启用或禁用用户使用图像生成功能的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_FEATURES_CODE_INTERPRETER`
+
+- 类型: `str`
+- 默认值: `True`
+- 描述: 启用或禁用用户使用代码解释器功能的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_FEATURES_FOLDERS`
+
+- 类型: `str`
+- 默认值: `True`
+- 描述: 向用户启用或禁用文件夹功能（聊天侧边栏）的可见性。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_FEATURES_NOTES`
+
+- 类型: `str`
+- 默认值: `True`
+- 描述: 向用户启用或禁用笔记功能的可见性。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_FEATURES_CHANNELS`
+
+- 类型: `str`
+- 默认值: `True`
+- 描述: 启用或禁用用户创建自己的群组频道的能力。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_FEATURES_API_KEYS`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 设置用户创建 API 密钥功能的权限。启用后，用户将有能力创建和管理用于程序化访问的 API 密钥。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+:::info
+
+要使 API 密钥创建（以及 API 密钥本身）正常工作，您不仅需要赋予特定用户组相应的权限，还需要使用 `ENABLE_API_KEYS` 进行全局启用。
+
+:::
+
+### 工作区权限
+
+#### `USER_PERMISSIONS_WORKSPACE_MODELS_ACCESS`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用用户访问工作区模型的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_WORKSPACE_KNOWLEDGE_ACCESS`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用用户访问工作区知识库的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_WORKSPACE_PROMPTS_ACCESS`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用用户访问工作区提示词的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_WORKSPACE_TOOLS_ACCESS`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用用户访问工作区工具的权限。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_WORKSPACE_MODELS_ALLOW_PUBLIC_SHARING`
+
+- 类型: `str`
+- 默认值: `False`
+- 描述: 启用或禁用工作区模型的公开共享。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_WORKSPACE_KNOWLEDGE_ALLOW_PUBLIC_SHARING`
+
+- 类型: `str`
+- 默认值: `False`
+- 描述: 启用或禁用工作区知识库的公开共享。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_WORKSPACE_PROMPTS_ALLOW_PUBLIC_SHARING`
+
+- 类型: `str`
+- 默认值: `False`
+- 描述: 启用或禁用工作区提示词的公开共享。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_WORKSPACE_TOOLS_ALLOW_PUBLIC_SHARING`
+
+- 类型: `str`
+- 默认值: `False`
+- 描述: 启用或禁用工作区工具的公开共享。
+- 持久性: 此环境变量是一个 `PersistentConfig` 变量。
+
+#### `USER_PERMISSIONS_NOTES_ALLOW_PUBLIC_SHARING`
+
+- 类型: `str`
+- 默认值: `True`
+- 描述: 启用或禁用笔记的公开共享。
+
+## 杂项环境变量 (Misc Environment Variables)
+
+这些变量并非 Open WebUI 特有，但在某些情况下仍具有参考价值。
+
+### 云存储 (Cloud Storage)
+
+#### `STORAGE_PROVIDER`
+
+- 类型: `str`
+- 可选项:
+  - `s3` - 使用 S3 客户端库及 [Amazon S3 存储](#amazon-s3-storage) 中提到的相关环境变量。
+  - `gcs` - 使用 GCS 客户端库及 [Google Cloud Storage](#google-cloud-storage) 中提到的相关环境变量。
+  - `azure` - 使用 Azure 客户端库及 [Microsoft Azure 存储](#microsoft-azure-storage) 中提到的相关环境变量。
+- 默认值: 空字符串 (' ')，默认为 `local`
+- 描述: 设置存储提供程序。
+
+#### Amazon S3 存储 (Amazon S3 Storage)
+
+#### `S3_ACCESS_KEY_ID`
+
+- 类型: `str`
+- 描述: 设置 S3 存储的访问密钥 ID。
+
+#### `S3_ADDRESSING_STYLE`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定用于 S3 存储的寻址样式（例如：'path', 'virtual'）。
+
+#### `S3_BUCKET_NAME`
+
+- 类型: `str`
+- 描述: 设置 S3 存储的存储桶名称。
+
+#### `S3_ENDPOINT_URL`
+
+- 类型: `str`
+- 描述: 设置 S3 存储的端点 URL。
+
+:::info
+
+如果端点是兼容 S3 的提供商（如 MinIO），且使用了由私有 CA 签名的 TLS 证书，请将环境变量 `AWS_CA_BUNDLE` 设置为 PEM 编码的 CA 证书文件路径。更多信息请参见 [Amazon SDK 文档](https://docs.aws.amazon.com/sdkref/latest/guide/feature-gen-config.html)。
+
+:::
+
+#### `S3_KEY_PREFIX`
+
+- 类型: `str`
+- 描述: 设置 S3 对象的键前缀。
+
+#### `S3_REGION_NAME`
+
+- 类型: `str`
+- 描述: 设置 S3 存储的区域名称。
+
+#### `S3_SECRET_ACCESS_KEY`
+
+- 类型: `str`
+- 描述: 设置 S3 存储的秘密访问密钥。
+
+#### `S3_USE_ACCELERATE_ENDPOINT`
+
+- 类型: `str`
+- 默认值: `False`
+- 描述: 指定是否对 S3 存储使用加速端点。
+
+#### `S3_ENABLE_TAGGING`
+
+- 类型: `str`
+- 默认值: `False`
+- 描述: 启用上传后对 S3 对象进行标记，以便更好地进行组织、搜索和与文件管理策略集成。使用 Cloudflare R2 时请务必设置为 `False`，因为 R2 不支持对象标记。
+
+#### Google Cloud Storage
+
+#### `GOOGLE_APPLICATION_CREDENTIALS_JSON`
+
+- 类型: `str`
+- 描述: Google 应用程序凭据 JSON 文件的内容。
+- 可选 - 如果未提供，将从环境中获取凭据。如果本地运行则使用用户凭据，如果在 Google Compute Engine 上运行则使用 Google 元数据服务器。
+- 可以按照此 [指南](https://developers.google.com/workspace/guides/create-credentials#service-account) 为服务帐户生成文件。
+
+#### `GCS_BUCKET_NAME`
+
+- 类型: `str`
+- 描述: 设置 Google Cloud Storage 的存储桶名称。存储桶必须已经存在。
+
+#### Microsoft Azure Storage
+
+#### `AZURE_STORAGE_ENDPOINT`
+
+- 类型: `str`
+- 描述: 设置 Azure Storage 的端点 URL。
+
+#### `AZURE_STORAGE_CONTAINER_NAME`
+
+- 类型: `str`
+- 描述: 设置 Azure Storage 的容器名称。
+
+#### `AZURE_STORAGE_KEY`
+
+- 类型: `str`
+- 描述: 设置 Azure Storage 的访问密钥。
+- 可选 - 如果未提供，将从环境中获取凭据。如果本地运行则使用用户凭据，如果在 Azure 服务中运行则使用托管身份（Managed Identity）。
+
+### OpenTelemetry 配置 (OpenTelemetry Configuration)
+
+#### `ENABLE_OTEL`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用用于可观测性的 OpenTelemetry。启用后，可以收集追踪 (tracing)、指标 (metrics) 和日志数据并导出到 OTLP 端点。
+
+#### `ENABLE_OTEL_TRACES`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用 OpenTelemetry 追踪的收集和导出。此变量与 `ENABLE_OTEL` 配合使用。
+
+#### `ENABLE_OTEL_METRICS`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用 OpenTelemetry 指标的收集和导出。此变量与 `ENABLE_OTEL` 配合使用。
+
+#### `ENABLE_OTEL_LOGS`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用 OpenTelemetry 日志导出。启用后，应用程序日志将发送到配置的 OTLP 端点。此变量与 `ENABLE_OTEL` 配合使用。
+
+#### `OTEL_EXPORTER_OTLP_ENDPOINT`
+
+- 类型: `str`
+- 默认值: `http://localhost:4317`
+- 描述: 指定用于导出追踪、指标和日志的默认 OTLP（OpenTelemetry 协议）端点。如果设置了 `OTEL_METRICS_EXPORTER_OTLP_ENDPOINT`，则可以覆盖指标端点；如果设置了 `OTEL_LOGS_EXPORTER_OTLP_ENDPOINT`，则可以覆盖日志端点。
+
+#### `OTEL_METRICS_EXPORTER_OTLP_ENDPOINT`
+
+- 类型: `str`
+- 默认值: `OTEL_EXPORTER_OTLP_ENDPOINT` 的值
+- 描述: 指定专用于导出 OpenTelemetry 指标的 OTLP 端点。如果未设置，则默认使用 `OTEL_EXPORTER_OTLP_ENDPOINT` 的值。当使用独立的追踪和指标端点时，此设置非常有用。
+
+#### `OTEL_LOGS_EXPORTER_OTLP_ENDPOINT`
+
+- 类型: `str`
+- 默认值: `OTEL_EXPORTER_OTLP_ENDPOINT` 的值
+- 描述: 指定专用于导出 OpenTelemetry 日志的 OTLP 端点。如果未设置，则默认使用 `OTEL_EXPORTER_OTLP_ENDPOINT` 的值。当使用独立的日志、追踪和指标端点时，此设置非常有用。
+
+#### `OTEL_EXPORTER_OTLP_INSECURE`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 如果设置为 `True`，OTLP 导出器将为追踪使用非安全连接（例如：用于 gRPC 的 HTTP）。对于指标，其行为由 `OTEL_METRICS_EXPORTER_OTLP_INSECURE` 控制；对于日志，则由 `OTEL_LOGS_EXPORTER_OTLP_INSECURE` 控制。
+
+#### `OTEL_METRICS_EXPORTER_OTLP_INSECURE`
+
+- 类型: `bool`
+- 默认值: `OTEL_EXPORTER_OTLP_INSECURE` 的值
+- 描述: 如果设置为 `True`，OTLP 导出器将为指标使用非安全连接。如果未指定，将使用 `OTEL_EXPORTER_OTLP_INSECURE` 的值。
+
+#### `OTEL_LOGS_EXPORTER_OTLP_INSECURE`
+
+- 类型: `bool`
+- 默认值: `OTEL_EXPORTER_OTLP_INSECURE` 的值
+- 描述: 如果设置为 `True`，OTLP 导出器将为日志使用非安全连接。如果未指定，将使用 `OTEL_EXPORTER_OTLP_INSECURE` 的值。
+
+#### `OTEL_SERVICE_NAME`
+
+- 类型: `str`
+- 默认值: `open-webui`
+- 描述: 设置将报告给您的 OpenTelemetry 收集器或可观测性平台的服务名称。这有助于识别您的 Open WebUI 实例。
+
+#### `OTEL_RESOURCE_ATTRIBUTES`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 允许您定义额外的资源属性，附加到所有遥测数据中，格式为逗号分隔的 `key1=val1,key2=val2`。
+
+#### `OTEL_TRACES_SAMPLER`
+
+- 类型: `str`
+- 可选项: `parentbased_always_on`, `always_on`, `always_off`, `parentbased_always_off` 等。
+- 默认值: `parentbased_always_on`
+- 描述: 配置 OpenTelemetry 追踪的采样策略。这决定了收集并导出哪些追踪以减少数据量。
+
+#### `OTEL_BASIC_AUTH_USERNAME`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 设置用于默认 OTLP 端点基础身份验证的用户名。这适用于追踪，且默认适用于指标和日志，除非被它们特定的身份验证变量覆盖。
+
+#### `OTEL_BASIC_AUTH_PASSWORD`
+
+- 类型: `str`
+- 默认值: 空字符串 (' ')
+- 描述: 设置用于默认 OTLP 端点基础身份验证的密码。这适用于追踪，且默认适用于指标和日志，除非被它们特定的身份验证变量覆盖。
+
+#### `OTEL_METRICS_BASIC_AUTH_USERNAME`
+
+- 类型: `str`
+- 默认值: `OTEL_BASIC_AUTH_USERNAME` 的值
+- 描述: 专门为 OTLP 指标端点设置用于基础身份验证的用户名。如果未指定，将使用 `OTEL_BASIC_AUTH_USERNAME` 的值。
+
+#### `OTEL_METRICS_BASIC_AUTH_PASSWORD`
+
+- 类型: `str`
+- 默认值: `OTEL_BASIC_AUTH_PASSWORD` 的值
+- 描述: 专门为 OTLP 指标端点设置用于基础身份验证的密码。如果未指定，将使用 `OTEL_BASIC_AUTH_PASSWORD` 的值。
+
+#### `OTEL_LOGS_BASIC_AUTH_USERNAME`
+
+- 类型: `str`
+- 默认值: `OTEL_BASIC_AUTH_USERNAME` 的值
+- 描述: 专门为 OTLP 日志端点设置用于基础身份验证的用户名。如果未指定，将使用 `OTEL_BASIC_AUTH_USERNAME` 的值。
+
+#### `OTEL_LOGS_BASIC_AUTH_PASSWORD`
+
+- 类型: `str`
+- 默认值: `OTEL_BASIC_AUTH_PASSWORD` 的值
+- 描述: 为 OTLP 日志端点专门设置用于基础身份验证的密码。如果未指定，将使用 `OTEL_BASIC_AUTH_PASSWORD` 的值。
+
+#### `OTEL_OTLP_SPAN_EXPORTER`
+
+- 类型: `str`
+- 可选项: `grpc`, `http`
+- 默认值: `grpc`
+- 描述: 指定导出 OpenTelemetry 追踪 (traces) 的默认协议（gRPC 或 HTTP）。如果设置了 `OTEL_METRICS_OTLP_SPAN_EXPORTER`（用于指标）或 `OTEL_LOGS_OTLP_SPAN_EXPORTER`（用于日志），则可以分别覆盖此设置。
+
+#### `OTEL_METRICS_OTLP_SPAN_EXPORTER`
+
+- 类型: `str`
+- 可选项: `grpc`, `http`
+- 默认值: `OTEL_OTLP_SPAN_EXPORTER` 的值
+- 描述: 指定导出 OpenTelemetry 指标 (metrics) 的协议（gRPC 或 HTTP）。如果未指定，将使用 `OTEL_OTLP_SPAN_EXPORTER` 的值。
+
+#### `OTEL_LOGS_OTLP_SPAN_EXPORTER`
+
+- 类型: `str`
+- 可选项: `grpc`, `http`
+- 默认值: `OTEL_OTLP_SPAN_EXPORTER` 的值
+- 描述: 指定导出 OpenTelemetry 日志 (logs) 的协议（gRPC 或 HTTP）。如果未指定，将使用 `OTEL_OTLP_SPAN_EXPORTER` 的值。
+
+### 数据库连接池 (Database Pool)
+
+#### `DATABASE_URL`
+
+- 类型: `str`
+- 默认值: `sqlite:///${DATA_DIR}/webui.db`
+- 描述: 指定完整的数据库连接 URL，遵循 SQLAlchemy 的 URL 方案。如果显式设置，此变量将优先于各个独立的数据库连接参数。
+
+:::info
+
+**对于 PostgreSQL 支持，请确保您使用的是 `pip install open-webui[all]` 进行安装，而非基础安装。**
+支持 SQLite、Postgres 以及通过 SQLCipher 进行加密的 SQLite。
+**更改 URL 不会自动在数据库之间迁移数据。**
+
+有关 URL 方案的文档可以在[这里](https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls)找到。
+
+如果您的数据库密码包含特殊字符，请确保它们经过了正确的 URL 编码。例如，密码 `p@ssword` 应编码为 `p%40ssword`。
+
+有关使用各独立参数或加密 SQLite 的配置，请参见下文的相关章节。
+
+:::
+
+:::warning
+
+**多副本部署必填**
+对于多副本或高可用部署（Kubernetes, Docker Swarm），您**必须**使用外部数据库（PostgreSQL）而非 SQLite。SQLite 不支持来自多个实例的并发写入，会导致数据库损坏或数据不一致。
+
+:::
+
+#### `DATABASE_TYPE`
+
+- 类型: `str`
+- 默认值: `None`（如果 `DATABASE_URL` 使用默认的 SQLite 路径，则自动设为 `sqlite`）
+- 描述: 指定数据库类型（例如：`sqlite`, `postgresql`, `sqlite+sqlcipher`）。如果未显式定义完整的 `DATABASE_URL`，此变量将与其他独立参数一起用于构建 `DATABASE_URL`。
+- 持久性: 否
+
+#### `DATABASE_USER`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定数据库身份验证的用户名。
+- 持久性: 否
+
+#### `DATABASE_PASSWORD`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定数据库身份验证的密码。如果密码包含特殊字符，请确保经过了正确的 URL 编码。
+- 持久性: 否
+
+#### `DATABASE_HOST`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定数据库服务器的主机名或 IP 地址。
+- 持久性: 否
+
+#### `DATABASE_PORT`
+
+- 类型: `int`
+- 默认值: `None`
+- 描述: 指定数据库服务器的端口号。
+- 持久性: 否
+
+#### `DATABASE_NAME`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定要连接的数据库名称。
+- 持久性: 否
+
+:::info
+
+当未显式设置 `DATABASE_URL` 时，Open WebUI 会尝试结合 `DATABASE_TYPE`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT` 和 `DATABASE_NAME` 来构建它。为了实现自动构建，**所有**这些独立参数都必须提供。如果有任何缺失，将使用默认的 `DATABASE_URL`（SQLite 文件）或任何显式设置的 `DATABASE_URL`。
+
+:::
+
+#### `DATABASE_USER_ACTIVE_STATUS_UPDATE_INTERVAL`
+
+- 类型: `float`
+- 默认值: `None`
+- 描述: 设置数据库中用户在线状态更新的最小时间间隔（秒）。有助于减少高流量实例的写入操作。设置为 `0.0` 则每次活动都更新。
+
+### 使用 SQLCipher 的加密 SQLite
+
+为了增强安全性，Open WebUI 支持使用 SQLCipher 对其主要的 SQLite 数据库进行静态加密。对于处理敏感数据且不需要使用 PostgreSQL 等大型数据库的部署，推荐使用此功能。
+
+:::warning 需要额外依赖项
+
+SQLCipher 加密需要**默认不包含**的额外依赖项。在使用此功能之前，您必须安装：
+
+- **SQLCipher 系统库**（例如：Debian/Ubuntu 上的 `libsqlcipher-dev`，或 macOS 上通过 Homebrew 安装的 `sqlcipher`）
+- **`sqlcipher3-wheels`** Python 包（`pip install sqlcipher3-wheels`）
+
+对于 Docker 用户，这意味着需要构建一个包含这些依赖项的自定义镜像。
+
+:::
+
+要启用加密，您必须配置两个环境变量：
+
+1. 设置 `DATABASE_TYPE="sqlite+sqlcipher"`。
+2. 设置 `DATABASE_PASSWORD="您的安全密码"`。
+
+当设置了这些变量且**未**显式定义完整的 `DATABASE_URL` 时，Open WebUI 将自动在 `./data/webui.db` 创建并使用加密的数据库文件。
+
+:::danger
+
+- 使用 `sqlite+sqlcipher` 时，必须设置 **`DATABASE_PASSWORD`** 环境变量。
+- **`DATABASE_TYPE`** 变量告知 Open WebUI 使用哪种连接逻辑。将其设置为 `sqlite+sqlcipher` 会激活加密功能。
+
+请确保数据库密码安全，因为解密和访问所有应用程序数据都需要它。
+
+:::
+
+#### `DATABASE_SCHEMA`
+
+- 类型: `str`
+- 默认值: `None`
+- 描述: 指定要连接的数据库架构 (Schema)。
+
+#### `DATABASE_POOL_SIZE`
+
+- 类型: `int`
+- 默认值: `None`
+- 描述: 指定数据库连接池的策略和大小。默认情况下，SQLAlchemy 会为所选的数据库连接自动选择合适的连接池策略。值为 `0` 表示禁用连接池。大于 `0` 的值会将连接池策略设置为 `QueuePool` 并相应地设置池大小。
+
+#### `DATABASE_POOL_MAX_OVERFLOW`
+
+- 类型: `int`
+- 默认值: `0`
+- 描述: 指定数据库连接池的最大溢出量。
+
+:::info
+
+有关此设置的更多信息可以在[这里](https://docs.sqlalchemy.org/en/20/core/pooling.html#sqlalchemy.pool.QueuePool.params.max_overflow)找到。
+
+:::
+
+#### `DATABASE_POOL_TIMEOUT`
+
+- 类型: `int`
+- 默认值: `30`
+- 描述: 指定获取数据库连接的超时时间（秒）。
+
+:::info
+
+有关此设置的更多信息可以在[这里](https://docs.sqlalchemy.org/en/20/core/pooling.html#sqlalchemy.pool.QueuePool.params.timeout)找到。
+
+:::
+
+#### `DATABASE_POOL_RECYCLE`
+
+- 类型: `int`
+- 默认值: `3600`
+- 描述: 指定数据库连接的回收时间（秒）。
+
+:::info
+
+有关此设置的更多信息可以在[这里](https://docs.sqlalchemy.org/en/20/core/pooling.html#setting-pool-recycle)找到。
+
+:::
+
+#### `DATABASE_ENABLE_SQLITE_WAL`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 启用或禁用 SQLite 的 WAL（预写式日志）模式。启用后，SQLite 事务可以更高效地管理，允许并发的多个读取者和一个写入者，从而提高数据库性能，特别是在高并发情况下。**此设置仅适用于 SQLite 数据库。**
+
+#### `DATABASE_DEDUPLICATE_INTERVAL`
+
+- 类型: `float`
+- 默认值: `0.0`
+- 描述: 设置一个时间间隔（秒），在此期间某些数据库写入操作（例如更新用户的 `last_active_at` 时间戳）将被去重。如果在该间隔内对同一个实体尝试进行写入操作，该操作将被跳过。值为 `0.0` 则禁用去重。启用此功能可以减少写入冲突并提高性能，但可能会导致受影响字段的实时准确性降低。
+
+### Redis
+
+- 类型: `str`
+- 描述: 指定用于存储应用程序状态的 Redis 实例或集群主机的 URL。
+- 示例:
+  - `redis://localhost:6379/0`
+  - `rediss://:password@localhost:6379/0` *(带密码和 TLS)*
+  - `rediss://redis-cluster.redis.svc.cluster.local:6379/0?ssl_cert_reqs=required&ssl_certfile=/tls/redis/tls.crt&ssl_keyfile=/tls/redis/tls.key&ssl_ca_certs=/tls/redis/ca.crt` *(带 mTLS)*
+
+:::warning
+
+**多 Worker 和多节点部署必填**
+
+在部署 Open WebUI 并设置 `UVICORN_WORKERS > 1`，或在带有负载均衡器的多节点/Worker 集群中（如 Helm/Kubectl/Kubernetes/K8s）时，您**必须**设置 `REDIS_URL` 的值。否则，会出现以下问题：
+
+- 会话管理将在不同 Worker 之间失败
+- 不同实例间的应用程序状态将不一致
+- 在分布式设置中，Websocket 连接将无法正常工作
+- 用户可能会遇到间歇性的身份验证失败
+
+Redis 作为中央状态存储，允许多个 Open WebUI 实例协同工作并共享关键的应用程序数据。
+
+:::
+
+:::info
+
+**单实例部署**
+
+如果您以默认的单实例方式运行 Open WebUI，且 `UVICORN_WORKERS=1`，则**不需要** Redis。应用程序将正常运行。
+
+:::
+
+#### `REDIS_SENTINEL_HOSTS`
+
+- 类型: `str`
+- 描述: 用于应用程序状态的 Redis 哨兵 (Sentinels) 的逗号分隔列表。如果指定，`REDIS_URL` 中的“主机名”将被解释为哨兵服务名称。
+
+#### `REDIS_SENTINEL_PORT`
+
+- 类型: `int`
+- 默认值: `26379`
+- 描述: 应用程序状态 Redis 哨兵的端口。
+
+#### `REDIS_CLUSTER`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 连接到 Redis 集群，而不是单个实例或使用 Redis 哨兵。如果为 `True`，则还必须定义 `REDIS_URL`。
+
+:::info
+
+如果定义了 `REDIS_SENTINEL_HOSTS`，此选项无效。
+
+:::
+
+#### `REDIS_KEY_PREFIX`
+
+- 类型: `str`
+- 默认值: `open-webui`
+- 描述: 自定义用于存储配置值的 Redis 键前缀。这允许多个 Open WebUI 实例共享同一个 Redis 实例而不发生键冲突。在 Redis 集群模式下操作时，前缀格式化为 `{prefix}:`（例如：`{open-webui}:config:*`），以便在同一个哈希槽内对配置键进行多键操作。
+
+#### `REDIS_SOCKET_CONNECT_TIMEOUT`
+
+- 类型: `float` (秒) 或针对 None 的空字符串
+- 默认值: None (无超时，使用 redis-py 库默认值)
+- 描述: 设置 Redis 和哨兵连接的套接字连接超时时间（秒）。此超时适用于初始 TCP 连接。设置后，它可以防止在尝试连接无法访问的 Redis 节点时出现无限阻塞。
+
+:::danger
+
+**对 Redis 哨兵部署至关重要**
+
+如果没有套接字连接超时，Redis 哨兵故障转移可能会在主节点离线时导致应用程序无限期挂起。应用程序可能会完全失去响应，甚至无法重启。
+
+对于哨兵部署，**强烈建议**设置此值（例如：`REDIS_SOCKET_CONNECT_TIMEOUT=5`）。
+
+:::
+
+:::warning
+
+**与 WEBSOCKET_REDIS_OPTIONS 的交互**
+
+如果您显式设置了 `WEBSOCKET_REDIS_OPTIONS`，此变量将**不会**应用于用于 Websocket 通信的 AsyncRedisManager。在这种情况下，您必须直接在 `WEBSOCKET_REDIS_OPTIONS` 中包含 `socket_connect_timeout`：
+```bash
+WEBSOCKET_REDIS_OPTIONS='{"socket_connect_timeout": 5}'
+```
+
+如果未设置 `WEBSOCKET_REDIS_OPTIONS`，`REDIS_SOCKET_CONNECT_TIMEOUT` 将自动应用于 Websocket 连接。
+
+:::
+
+#### `ENABLE_WEBSOCKET_SUPPORT`
+
+- 类型: `bool`
+- 默认值: `True`
+- 描述: 启用 Open WebUI 中的 Websocket 支持。
+
+:::warning
+
+**多 Worker 和多节点部署必填**
+
+在部署 Open WebUI 并设置 `UVICORN_WORKERS > 1`，或在带有负载均衡器的多节点/Worker 集群中（如 Helm/Kubectl/Kubernetes/K8s）时，您**必须**设置此变量。否则，会出现以下问题：
+
+- 会话管理将在不同 Worker 之间失败
+- 不同实例间的应用程序状态将不一致
+- 在分布式设置中，Websocket 连接将无法正常工作
+- 用户可能会遇到间歇性的身份验证失败
+
+:::
+
+#### `WEBSOCKET_MANAGER`
+
+- 类型: `str`
+- 默认值: `""` (空字符串)
+- 描述: 指定要使用的 Websocket 管理器。允许的值包括：`redis`
+
+:::warning
+
+**多 Worker 和多节点部署必填**
+
+在部署 Open WebUI 并设置 `UVICORN_WORKERS > 1`，或在带有负载均衡器的多节点/Worker 集群中（如 Helm/Kubectl/Kubernetes/K8s）时，您**必须**设置此变量。否则，会出现以下问题：
+
+- 会话管理将在不同 Worker 之间失败
+- 不同实例间的应用程序状态将不一致
+- 在分布式设置中，Websocket 连接将无法正常工作
+- 用户可能会遇到间歇性的身份验证失败
+
+:::
+
+#### `WEBSOCKET_REDIS_URL`
+
+- 类型: `str`
+- 默认值: `${REDIS_URL}`
+- 描述: 指定用于 Websocket 通信的 Redis 实例或集群主机的 URL。它独立于 `REDIS_URL`，在实践中建议同时设置两者。
+
+:::warning
+
+**多 Worker 和多节点部署必填**
+
+在部署 Open WebUI 并设置 `UVICORN_WORKERS > 1`，或在带有负载均衡器的多节点/Worker 集群中（如 Helm/Kubectl/Kubernetes/K8s）时，您**必须**设置此变量。否则，会出现以下问题：
+
+- 会话管理将在不同 Worker 之间失败
+- 不同实例间的应用程序状态将不一致
+- 在分布式设置中，Websocket 连接将无法正常工作
+- 用户可能会遇到间歇性的身份验证失败
+
+:::
+
+#### `WEBSOCKET_SENTINEL_HOSTS`
+
+- 类型: `str`
+- 描述: 用于 Websocket 的 Redis 哨兵的逗号分隔列表。如果指定，`WEBSOCKET_REDIS_URL` 中的“主机名”将被解释为哨兵服务名称。
+
+#### `WEBSOCKET_SENTINEL_PORT`
+
+- 类型: `int`
+- 默认值: `26379`
+- 描述: Websocket Redis 哨兵的端口。
+
+#### `WEBSOCKET_REDIS_CLUSTER`
+
+- 类型: `bool`
+- 默认值: `${REDIS_CLUSTER}`
+- 描述: 指定 Websocket 应与 Redis 集群通信，而不是单个实例或使用 Redis 哨兵。如果为 `True`，则还必须定义 `WEBSOCKET_REDIS_URL` 和/或 `REDIS_URL`。
+
+:::info
+
+如果定义了 `WEBSOCKET_SENTINEL_HOSTS`，此选项无效。
+
+:::
+
+#### `WEBSOCKET_REDIS_OPTIONS`
+
+- 类型: `str`
+- 默认值: `{}`（为空时允许应用已设置的 `REDIS_SOCKET_CONNECT_TIMEOUT`）
+- 描述: 以字符串形式表示的字典，包含用于 Websocket Redis 客户端 (AsyncRedisManager) 的附加 Redis 连接选项。这允许您指定高级连接参数，如 SSL 设置、超时或其他标准 `WEBSOCKET_REDIS_URL` 未涵盖的 Redis 客户端配置。字符串应格式化为有效的 JSON。例如：`{"retry_on_timeout": true, "socket_connect_timeout": 5, "socket_timeout": 5, "max_connections": 8}`。可以使用[这里](https://redis.readthedocs.io/en/stable/connections.html)列出的所有可 JSON 加密的选项。
+
+:::warning
+
+**AWS SSM 和 Docker Compose 无法直接摄取原始 JSON，因此您需要对双引号进行转义，如下所示：**
+`{\"retry_on_timeout\": true, \"socket_connect_timeout\": 5, \"socket_timeout\": 5, \"max_connections\": 8}`
+
+:::
+
+:::info
+
+**与 REDIS_SOCKET_CONNECT_TIMEOUT 的优先级**
+
+当此变量留空（默认）时，如果设置了 `REDIS_SOCKET_CONNECT_TIMEOUT`，它会自动应用于 Websocket 连接。但是，如果您显式设置了 `WEBSOCKET_REDIS_OPTIONS`，`REDIS_SOCKET_CONNECT_TIMEOUT` 将**不会**被注入——如果需要，您必须在此 JSON 中手动包含 `socket_connect_timeout`。
+
+:::
+
+#### `WEBSOCKET_SERVER_LOGGING`
+
+- 类型: `bool`
+- 默认值: `false`
+- 描述: 控制与 Websocket 操作相关的 SocketIO 服务器日志。
+
+:::warning
+
+**这可能会产生非常冗长的日志，建议仅在调试 Redis 相关问题时使用此标志。**
+
+:::
+
+#### `WEBSOCKET_SERVER_ENGINEIO_LOGGING`
+
+- 类型: `bool`
+- 默认值: `false`
+- 描述: 控制与 Websocket 操作相关的 EngineIO 服务器日志。
+
+:::warning
+
+**这可能会产生非常冗长的日志，建议仅在调试 Redis 相关问题时使用此标志。**
+
+:::
+
+#### `WEBSOCKET_SERVER_PING_TIMEOUT`
+
+- 类型: `int`
+- 默认值: `20`
+- 描述: 向 Redis 发送 ping 的超时时间（秒）。
+
+#### `WEBSOCKET_SERVER_PING_INTERVAL`
+
+- 类型: `int`
+- 默认值: `25`
+- 描述: 向 Redis 发送 ping 的频率（秒）。
+
+#### `ENABLE_STAR_SESSIONS_MIDDLEWARE`
+
+- 类型: `bool`
+- 默认值: `False`
+- 描述: 通过 StarSessions 中间件启用基于 Redis 的会话存储，用于 OAuth 身份验证流。启用后，OAuth 会话状态将存储在 Redis 而非浏览器 cookie 中，这有助于解决在会话数据需要跨 Pod 共享的多副本部署中的 CSRF 错误。这是一个有助于解决 CSRF 错误的实验性功能。
+- 持久性: 这是一个实验性的环境变量。
+
+:::warning 实验性功能 - 已知限制
+
+此功能目前处于实验阶段，存在已知的兼容性问题：
+
+- **尚不支持 Redis 哨兵和 Redis 集群配置**，如果启用此设置将导致身份验证失败
+- 目前仅兼容基础 Redis 设置（单实例或标准 Redis URL）
+- 引入此功能是为了解决多 Pod 部署中的 CSRF "mismatching_state" 错误，但由于持续的兼容性优化，默认情况下它是禁用的
+
+**仅在以下情况下启用此设置：**
+- 您在多副本部署中的 OAuth 登录期间遇到持续的 CSRF 错误
+- 您使用的是基础 Redis 设置（非哨兵或集群）
+- 您已确认 `WEBUI_SECRET_KEY` 在所有副本中设置的值相同
+- 您理解这是一个实验性功能，可能会在未来的版本中更改或移除
+
+对于大多数部署，默认的基于浏览器 cookie 的会话管理足以且更稳定。
+:::
+
+### Uvicorn 设置
+
+#### `UVICORN_WORKERS`
+
+- 类型: `int`
+- 默认值: `1`
+- 描述: 控制 Uvicorn 生成的用于处理请求的 Worker 进程数。每个 Worker 在单独的进程中运行自己的应用程序实例。
+
+:::info
+
+在 Kubernetes 等编排环境或使用 Helm Chart 部署时，建议将 UVICORN_WORKERS 保持为 1。容器编排平台已经通过 Pod 副本提供了自己的扩展机制，在容器内部使用多个 Worker 可能会导致资源分配问题，并使水平扩展策略复杂化。
+
+如果您使用了 UVICORN_WORKERS，还需要确保相应地设置了可扩展多 Worker 设置的相关环境变量。
+
+:::
+
+:::warning 带多个 Worker 的数据库迁移
+当 `UVICORN_WORKERS > 1` 时，启动应用程序可能会触发来自多个 Worker 进程的并发数据库迁移，从而可能导致数据库架构损坏或状态不一致。
+
+**建议：**
+在拉取新镜像或安装更新后，**始终先以单 Worker 运行 Open WebUI (`UVICORN_WORKERS=1`)**。这可确保数据库迁移在单个进程中成功完成。迁移完成且应用程序启动后，您可以使用所需的 Worker 数量重启它。
+
+**对于 Kubernetes, Helm, Minikube 和其他编排设置：**
+确保您的部署策略允许单副本或单 Worker 的初始化容器/作业在扩展到多个副本或 Worker 之前处理迁移。这对于防止架构更新期间的竞态条件至关重要。
+:::
+
+### 缓存设置 (Cache Settings)
+
+#### `CACHE_CONTROL`
+
+- 类型: `str`
+- 默认值: 未设置（不添加 Cache-Control 标头）
+- 描述: 为所有 HTTP 响应设置 Cache-Control 标头。支持标准指令，如 `public`, `private`, `no-cache`, `no-store`, `must-revalidate`, `max-age=seconds` 等。如果提供无效值，则默认使用 `"no-store, max-age=0"`（不缓存）。
+- 示例:
+  - `"private, max-age=86400"` - 私有缓存 24 小时
+  - `"public, max-age=3600, must-revalidate"` - 公共缓存 1 小时，然后重新验证
+  - `"no-cache, no-store, must-revalidate"` - 绝不缓存
+
+### 代理设置 (Proxy Settings)
+
+Open WebUI 支持为 HTTP 和 HTTPS 检索使用代理。要指定代理设置，Open WebUI 使用以下环境变量：
+
+#### `http_proxy`
+
+- 类型: `str`
+- 描述: 设置 HTTP 代理的 URL。
+
+#### `https_proxy`
+
+- 类型: `str`
+- 描述: 设置 HTTPS 代理的 URL。
+
+#### `no_proxy`
+
+- 类型: `str`
+- 描述: 列出不应使用代理的域名后缀（或 IP 地址），用逗号分隔。例如，将 no_proxy 设置为 `.mit.edu` 可确保在访问来自 MIT 的文档时绕过代理。
+
+### 安装所需的 Python 包
+
+Open WebUI 提供了环境变量来自定义 pip 安装过程。以下是 Open WebUI 用于调整包安装行为的环境变量：
+
+#### `PIP_OPTIONS`
+
+- 类型: `str`
+- 描述: 指定 pip 在安装包时应使用的额外命令行选项。例如，您可以包含 `--upgrade`, `--user` 或 `--no-cache-dir` 等标志。
+
+#### `PIP_PACKAGE_INDEX_OPTIONS`
+
+- 类型: `str`
+- 描述: 定义 pip 的自定义包索引行为。这可以包括指定额外或替代的索引 URL（例如 `--extra-index-url`）、身份验证凭据或其他参数，以管理如何从不同位置检索包。
+
+
